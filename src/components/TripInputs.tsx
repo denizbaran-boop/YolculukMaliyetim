@@ -9,6 +9,7 @@ interface Props {
   durationMinutes: string;
   avgSpeed: string;
   peopleCount: string;
+  simplified?: boolean;
   onDistanceChange: (v: string) => void;
   onModeChange: (m: TripMode) => void;
   onDurationHoursChange: (v: string) => void;
@@ -24,6 +25,7 @@ export default function TripInputs({
   durationMinutes,
   avgSpeed,
   peopleCount,
+  simplified,
   onDistanceChange,
   onModeChange,
   onDurationHoursChange,
@@ -55,89 +57,92 @@ export default function TripInputs({
         </div>
       </div>
 
-      {/* Mode toggle */}
-      <div>
-        <label className="label">Hesaplama Modu</label>
-        <div className="toggle-pill">
-          <button
-            className={mode === "duration" ? "active" : ""}
-            onClick={() => onModeChange("duration")}
-            type="button"
-          >
-            Süre ile
-          </button>
-          <button
-            className={mode === "speed" ? "active" : ""}
-            onClick={() => onModeChange("speed")}
-            type="button"
-          >
-            Hız ile
-          </button>
-        </div>
-      </div>
+      {/* Mode toggle + speed/duration — hidden in simplified (manual) mode */}
+      {!simplified && (
+        <>
+          <div>
+            <label className="label">Hesaplama Modu</label>
+            <div className="toggle-pill">
+              <button
+                className={mode === "duration" ? "active" : ""}
+                onClick={() => onModeChange("duration")}
+                type="button"
+              >
+                Süre ile
+              </button>
+              <button
+                className={mode === "speed" ? "active" : ""}
+                onClick={() => onModeChange("speed")}
+                type="button"
+              >
+                Hız ile
+              </button>
+            </div>
+          </div>
 
-      {/* Duration or Speed input */}
-      {mode === "duration" ? (
-        <div className="fade-in">
-          <label className="label">Yolculuk Süresi</label>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="relative">
-              <input
-                type="number"
-                className="input-base pr-16"
-                placeholder="0"
-                min="0"
-                max="240"
-                value={durationHours}
-                onChange={(e) => onDurationHoursChange(e.target.value)}
-              />
-              <span
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                saat
-              </span>
+          {mode === "duration" ? (
+            <div className="fade-in">
+              <label className="label">Yolculuk Süresi</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative">
+                  <input
+                    type="number"
+                    className="input-base pr-16"
+                    placeholder="0"
+                    min="0"
+                    max="240"
+                    value={durationHours}
+                    onChange={(e) => onDurationHoursChange(e.target.value)}
+                  />
+                  <span
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    saat
+                  </span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="number"
+                    className="input-base pr-10"
+                    placeholder="0"
+                    min="0"
+                    max="59"
+                    value={durationMinutes}
+                    onChange={(e) => onDurationMinutesChange(e.target.value)}
+                  />
+                  <span
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
+                    style={{ color: "var(--text-secondary)" }}
+                  >
+                    dk
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="relative">
-              <input
-                type="number"
-                className="input-base pr-10"
-                placeholder="0"
-                min="0"
-                max="59"
-                value={durationMinutes}
-                onChange={(e) => onDurationMinutesChange(e.target.value)}
-              />
-              <span
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
-                style={{ color: "var(--text-secondary)" }}
-              >
-                dk
-              </span>
+          ) : (
+            <div className="fade-in">
+              <label className="label">Ortalama Hız</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  className="input-base pr-18"
+                  placeholder="örn. 90"
+                  min="1"
+                  max="250"
+                  value={avgSpeed}
+                  onChange={(e) => onAvgSpeedChange(e.target.value)}
+                />
+                <span
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  km/h
+                </span>
+              </div>
             </div>
-          </div>
-        </div>
-      ) : (
-        <div className="fade-in">
-          <label className="label">Ortalama Hız</label>
-          <div className="relative">
-            <input
-              type="number"
-              className="input-base pr-18"
-              placeholder="örn. 90"
-              min="1"
-              max="250"
-              value={avgSpeed}
-              onChange={(e) => onAvgSpeedChange(e.target.value)}
-            />
-            <span
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-medium"
-              style={{ color: "var(--text-secondary)" }}
-            >
-              km/h
-            </span>
-          </div>
-        </div>
+          )}
+        </>
       )}
 
       {/* People count */}

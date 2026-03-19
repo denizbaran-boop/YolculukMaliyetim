@@ -26,7 +26,7 @@ export interface FuelPrices {
   isFallback: boolean;
 }
 
-export type TripMode = "duration" | "speed";
+export type TripMode = "duration" | "speed" | "manual";
 
 export interface TripInput {
   distance: number; // km

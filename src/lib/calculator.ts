@@ -52,7 +52,11 @@ export function calculate(
   let avgSpeed: number;
   let duration: number; // minutes
 
-  if (trip.mode === "duration") {
+  if (trip.mode === "manual") {
+    // Direct mode: use consumption as-is, no speed adjustment
+    avgSpeed = 0;
+    duration = 0;
+  } else if (trip.mode === "duration") {
     const durationMinutes = trip.duration ?? 60;
     const durationHours = durationMinutes / 60;
     avgSpeed = durationHours > 0 ? trip.distance / durationHours : 0;
@@ -63,8 +67,11 @@ export function calculate(
     duration = durationHours * 60;
   }
 
-  // Adjust consumption for speed
-  const adjustedConsumption = adjustConsumption(variant.consumption, avgSpeed);
+  // Adjust consumption for speed (skipped in manual mode)
+  const adjustedConsumption =
+    trip.mode === "manual"
+      ? variant.consumption
+      : adjustConsumption(variant.consumption, avgSpeed);
 
   // Calculate fuel used
   const fuelUsed = (trip.distance * adjustedConsumption) / 100;

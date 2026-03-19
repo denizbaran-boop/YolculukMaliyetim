@@ -36,35 +36,46 @@ export default function HomePage() {
   // Location + fuel
   const { fuelPrices, loading, error, retry } = useLocation();
 
+  // Effective trip mode — manual vehicle input uses "manual" to skip speed adjustment
+  const effectiveMode = vehicleInputMode === "manual" ? "manual" : mode;
+
   // Reactive calculation
   const result = useMemo<CalculationResult | null>(() => {
     if (!variant || !fuelPrices) return null;
     const dist = parseFloat(distance);
     if (!dist || dist <= 0) return null;
 
+    if (effectiveMode === "manual") {
+      return calculate(
+        variant,
+        { distance: dist, mode: "manual", peopleCount: parseInt(peopleCount) || 1 },
+        fuelPrices
+      );
+    }
+
     const totalMinutes =
-      mode === "duration"
+      effectiveMode === "duration"
         ? (parseFloat(durationHours) || 0) * 60 + (parseFloat(durationMinutes) || 0)
         : undefined;
 
     const speed =
-      mode === "speed" ? parseFloat(avgSpeed) || undefined : undefined;
+      effectiveMode === "speed" ? parseFloat(avgSpeed) || undefined : undefined;
 
-    if (mode === "duration" && (!totalMinutes || totalMinutes <= 0)) return null;
-    if (mode === "speed" && (!speed || speed <= 0)) return null;
+    if (effectiveMode === "duration" && (!totalMinutes || totalMinutes <= 0)) return null;
+    if (effectiveMode === "speed" && (!speed || speed <= 0)) return null;
 
     return calculate(
       variant,
       {
         distance: dist,
-        mode,
+        mode: effectiveMode,
         duration: totalMinutes,
         avgSpeed: speed,
         peopleCount: parseInt(peopleCount) || 1,
       },
       fuelPrices
     );
-  }, [variant, fuelPrices, distance, mode, durationHours, durationMinutes, avgSpeed, peopleCount]);
+  }, [variant, fuelPrices, distance, effectiveMode, durationHours, durationMinutes, avgSpeed, peopleCount]);
 
   // Switch modes — reset the variant for the inactive mode
   const handleModeSwitch = (next: VehicleInputMode) => {
@@ -248,11 +259,12 @@ export default function HomePage() {
           />
           <TripInputs
             distance={distance}
-            mode={mode}
+            mode={effectiveMode}
             durationHours={durationHours}
             durationMinutes={durationMinutes}
             avgSpeed={avgSpeed}
             peopleCount={peopleCount}
+            simplified={vehicleInputMode === "manual"}
             onDistanceChange={setDistance}
             onModeChange={setMode}
             onDurationHoursChange={setDurationHours}

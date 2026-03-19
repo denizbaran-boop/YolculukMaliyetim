@@ -1,40 +1,36 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import type { FuelType, VehicleVariant } from "@/types";
+import type { VehicleVariant } from "@/types";
 
 interface Props {
   onVariantChange: (variant: VehicleVariant | null) => void;
 }
 
-const FUEL_OPTIONS: { value: FuelType; label: string; unit: string; color: string }[] = [
+type ManualFuelType = "gasoline" | "diesel" | "electric";
+
+const FUEL_OPTIONS: { value: ManualFuelType; label: string; unit: string; color: string }[] = [
   { value: "gasoline", label: "Benzin",   unit: "L/100km",   color: "#fb923c" },
   { value: "diesel",   label: "Dizel",    unit: "L/100km",   color: "#60a5fa" },
-  { value: "lpg",      label: "LPG",      unit: "L/100km",   color: "#f472b6" },
-  { value: "hybrid",   label: "Hibrit",   unit: "L/100km",   color: "#34d399" },
   { value: "electric", label: "Elektrik", unit: "kWh/100km", color: "#a78bfa" },
 ];
 
 // Warn if above these values (still allow calculation)
-const WARN_THRESHOLD: Record<FuelType, number> = {
+const WARN_THRESHOLD: Record<ManualFuelType, number> = {
   gasoline: 25,
   diesel:   25,
-  lpg:      25,
-  hybrid:   25,
   electric: 40,
 };
 
 // Hard max — reject above these
-const MAX_THRESHOLD: Record<FuelType, number> = {
+const MAX_THRESHOLD: Record<ManualFuelType, number> = {
   gasoline: 40,
   diesel:   40,
-  lpg:      40,
-  hybrid:   40,
   electric: 60,
 };
 
 export default function ManualConsumptionInput({ onVariantChange }: Props) {
-  const [fuelType, setFuelType] = useState<FuelType | "">("");
+  const [fuelType, setFuelType] = useState<ManualFuelType | "">("");
   const [rawValue, setRawValue] = useState("");
 
   const selectedFuel = FUEL_OPTIONS.find((f) => f.value === fuelType) ?? null;
@@ -43,10 +39,10 @@ export default function ManualConsumptionInput({ onVariantChange }: Props) {
   // Validation
   const isEmpty = rawValue.trim() === "";
   const isInvalid = !isEmpty && (isNaN(consumption) || consumption <= 0);
-  const isOverMax = !isEmpty && !isNaN(consumption) && fuelType
+  const isOverMax = !isEmpty && !isNaN(consumption) && fuelType !== ""
     ? consumption > MAX_THRESHOLD[fuelType]
     : false;
-  const isWarning = !isEmpty && !isNaN(consumption) && fuelType && !isOverMax
+  const isWarning = !isEmpty && !isNaN(consumption) && fuelType !== "" && !isOverMax
     ? consumption > WARN_THRESHOLD[fuelType]
     : false;
   const isValid = !isEmpty && !isNaN(consumption) && consumption > 0 && !isOverMax;
@@ -68,7 +64,7 @@ export default function ManualConsumptionInput({ onVariantChange }: Props) {
   }, [fuelType, rawValue, isValid]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset consumption when fuel type changes
-  const handleFuelTypeChange = (next: FuelType) => {
+  const handleFuelTypeChange = (next: ManualFuelType) => {
     setFuelType(next);
     setRawValue("");
     onVariantChange(null);
@@ -79,7 +75,7 @@ export default function ManualConsumptionInput({ onVariantChange }: Props) {
       {/* Yakıt Türü */}
       <div>
         <label className="label">Yakıt Türü</label>
-        <div className="grid grid-cols-5 gap-1.5 mt-1">
+        <div className="grid grid-cols-3 gap-1.5 mt-1">
           {FUEL_OPTIONS.map((opt) => {
             const active = fuelType === opt.value;
             return (
@@ -156,13 +152,13 @@ export default function ManualConsumptionInput({ onVariantChange }: Props) {
             Geçerli bir tüketim değeri girin (0&apos;dan büyük olmalı).
           </p>
         )}
-        {isOverMax && fuelType && (
+        {isOverMax && fuelType !== "" && (
           <p className="text-xs mt-1.5" style={{ color: "#f87171" }}>
             Değer çok yüksek (maks. {MAX_THRESHOLD[fuelType]}{" "}
             {fuelType === "electric" ? "kWh/100km" : "L/100km"}). Lütfen kontrol edin.
           </p>
         )}
-        {isWarning && fuelType && (
+        {isWarning && fuelType !== "" && (
           <p className="text-xs mt-1.5" style={{ color: "#fbbf24" }}>
             Yüksek tüketim değeri — gerçek aracınızla örtüştüğünden emin olun.
           </p>
