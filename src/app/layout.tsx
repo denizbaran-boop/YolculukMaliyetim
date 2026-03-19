@@ -9,12 +9,31 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://yolculukmaliyetim.com"),
   title: "Yolculuk Maliyet Hesaplayıcı",
   description:
-    "Aracınız, güzergahınız ve güncel yakıt fiyatlarına göre yolculuk maliyetinizi hesaplayın.",
-  icons: {
-    icon: "/icon.png",
+    "Araç, mesafe ve güncel yakıt fiyatlarına göre yolculuk maliyetinizi hesaplayın.",
+  alternates: {
+    canonical: "https://yolculukmaliyetim.com",
   },
+  openGraph: {
+    title: "Yolculuk Maliyet Hesaplayıcı",
+    description:
+      "Araç, mesafe ve güncel yakıt fiyatlarına göre yolculuk maliyetinizi hesaplayın.",
+    url: "https://yolculukmaliyetim.com",
+    siteName: "Yolculuk Maliyet Hesaplayıcı",
+    locale: "tr_TR",
+    type: "website",
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Yolculuk Maliyet Hesaplayıcı",
+  url: "https://yolculukmaliyetim.com",
+  description:
+    "Araç, mesafe ve güncel yakıt fiyatlarına göre yolculuk maliyetinizi hesaplayın.",
 };
 
 export default function RootLayout({
@@ -25,6 +44,10 @@ export default function RootLayout({
   return (
     <html lang="tr" className={inter.variable}>
       <body>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         {children}
         <Analytics />
       </body>
