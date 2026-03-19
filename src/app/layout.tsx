@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   title: "Yolculuk Maliyet Hesaplayıcı",
   description:
     "Aracınız, güzergahınız ve güncel yakıt fiyatlarına göre yolculuk maliyetinizi hesaplayın.",
+  icons: {
+    icon: "/icon.png",
+  },
 };
 
 export default function RootLayout({
