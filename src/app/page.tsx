@@ -281,6 +281,41 @@ export default function HomePage() {
           peopleCount={parseInt(peopleCount) || 1}
         />
 
+        {/* SEO content section */}
+        <section
+          className="glass-card px-6 py-8 mt-5"
+          style={{ color: "var(--text-secondary)" }}
+        >
+          <h1
+            className="text-lg font-bold mb-4"
+            style={{ color: "var(--text-primary)" }}
+          >
+            Yolculuk Maliyeti Nasıl Hesaplanır?
+          </h1>
+          <p className="text-sm leading-relaxed mb-3">
+            <strong style={{ color: "var(--text-primary)" }}>Yolculuk maliyeti hesaplama</strong>,
+            aracın yakıt tüketimi, gidilecek mesafe ve güncel yakıt fiyatlarının bir araya
+            getirilmesiyle yapılır. Hesaplayıcımız, seçtiğiniz araç modelinin fabrika tüketim
+            değerlerini ve konumunuza göre belirlenen akaryakıt fiyatlarını kullanarak size
+            gerçekçi bir maliyet tahmini sunar.
+          </p>
+          <p className="text-sm leading-relaxed mb-3">
+            <strong style={{ color: "var(--text-primary)" }}>Yakıt maliyeti hesaplama</strong>{" "}
+            için temel formül şudur: toplam mesafeyi 100&apos;e bölün, aracın 100 km tüketimiyle
+            çarpın ve yakıt birim fiyatını uygulayın. Örneğin 300 km&apos;lik bir yolculukta,
+            100 km&apos;de 7 litre benzin tüketen bir araçla ve 45 ₺/litre fiyatıyla toplam
+            yakıt gideri yaklaşık 945 ₺ olur. Birden fazla kişiyle seyahat edildiğinde bu tutar
+            kişi başına bölünebilir.
+          </p>
+          <p className="text-sm leading-relaxed">
+            <strong style={{ color: "var(--text-primary)" }}>Km başına maliyet</strong>, uzun
+            yolculukları karşılaştırmanın en pratik yoludur. Otoyol gibi yüksek hızlı
+            güzergahlarda tüketim artabileceğinden, hesaplayıcı ortalama hız veya süre
+            bilgisini de dikkate alarak daha isabetli sonuçlar üretir. Bu sayede şehirlerarası
+            her yolculuktan önce bütçenizi kolayca planlayabilirsiniz.
+          </p>
+        </section>
+
         {/* Footer */}
         <footer className="text-center mt-8 text-xs" style={{ color: "var(--text-secondary)" }}>
           Hesaplamalar tahminidir. Gerçek tüketim sürüş koşullarına göre değişebilir.
