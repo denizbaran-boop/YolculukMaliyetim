@@ -2,11 +2,16 @@ import type { Vehicle } from "@/types";
 
 export const VEHICLES: Vehicle[] = [
   // ── TOYOTA ──────────────────────────────────────────────────────────────
-  // Corolla — 2015–2024
+  // Corolla — 2015–2025
+  { make: "Toyota", model: "Corolla", year: 2025, variants: [
+    { id: "corolla-25-15b",  label: "1.5 Benzin Multidrive S",fuelType: "gasoline", consumption: 7.5, transmission: "Otomatik" },
+    { id: "corolla-25-18h",  label: "1.8 Hybrid e-CVT",       fuelType: "hybrid",   consumption: 4.3, transmission: "CVT" },
+    { id: "corolla-25-20h",  label: "2.0 Hybrid e-CVT",       fuelType: "hybrid",   consumption: 5.1, transmission: "CVT" },
+  ]},
   { make: "Toyota", model: "Corolla", year: 2024, variants: [
-    { id: "corolla-24-18h",  label: "1.8 Hybrid e-CVT",      fuelType: "hybrid",   consumption: 4.3 },
-    { id: "corolla-24-20h",  label: "2.0 Hybrid e-CVT",      fuelType: "hybrid",   consumption: 5.1 },
-    { id: "corolla-24-14t",  label: "1.4 D-4D Dizel",        fuelType: "diesel",   consumption: 5.5 },
+    { id: "corolla-24-15b",  label: "1.5 Benzin Multidrive S",fuelType: "gasoline", consumption: 7.5, transmission: "Otomatik" },
+    { id: "corolla-24-18h",  label: "1.8 Hybrid e-CVT",       fuelType: "hybrid",   consumption: 4.3, transmission: "CVT" },
+    { id: "corolla-24-20h",  label: "2.0 Hybrid e-CVT",       fuelType: "hybrid",   consumption: 5.1, transmission: "CVT" },
   ]},
   { make: "Toyota", model: "Corolla", year: 2023, variants: [
     { id: "corolla-23-18h",  label: "1.8 Hybrid e-CVT",      fuelType: "hybrid",   consumption: 4.4 },
@@ -49,7 +54,11 @@ export const VEHICLES: Vehicle[] = [
     { id: "corolla-15-14d",  label: "1.4 D-4D Dizel",        fuelType: "diesel",   consumption: 5.5 },
   ]},
 
-  // Yaris — 2015–2024
+  // Yaris — 2015–2025
+  { make: "Toyota", model: "Yaris", year: 2025, variants: [
+    { id: "yaris-25-15h",    label: "1.5 Hybrid e-CVT",       fuelType: "hybrid",   consumption: 3.7, transmission: "CVT" },
+    { id: "yaris-25-10t",    label: "1.0 VVT-i Benzin",       fuelType: "gasoline", consumption: 5.4, transmission: "Manuel" },
+  ]},
   { make: "Toyota", model: "Yaris", year: 2024, variants: [
     { id: "yaris-24-15h",    label: "1.5 Hybrid e-CVT",      fuelType: "hybrid",   consumption: 3.8 },
     { id: "yaris-24-10t",    label: "1.0 VVT-i Benzin",      fuelType: "gasoline", consumption: 5.5 },
@@ -142,7 +151,13 @@ export const VEHICLES: Vehicle[] = [
   ]},
 
   // ── VOLKSWAGEN ──────────────────────────────────────────────────────────
-  // Golf — 2015–2024
+  // Golf — 2015–2025
+  { make: "Volkswagen", model: "Golf", year: 2025, variants: [
+    { id: "golf-25-10t",     label: "1.0 TSI 110 hp Manuel",  fuelType: "gasoline", consumption: 5.3, transmission: "Manuel" },
+    { id: "golf-25-15t",     label: "1.5 TSI 150 hp DSG",     fuelType: "gasoline", consumption: 5.7, transmission: "DSG" },
+    { id: "golf-25-20tdi",   label: "2.0 TDI 150 hp DSG",     fuelType: "diesel",   consumption: 4.7, transmission: "DSG" },
+    { id: "golf-25-14gte",   label: "1.4 GTE Plug-in Hybrid", fuelType: "hybrid",   consumption: 1.5, transmission: "DSG" },
+  ]},
   { make: "Volkswagen", model: "Golf", year: 2024, variants: [
     { id: "golf-24-10t",     label: "1.0 TSI 110 hp Manuel", fuelType: "gasoline", consumption: 5.4 },
     { id: "golf-24-15t",     label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 5.8 },
@@ -264,7 +279,12 @@ export const VEHICLES: Vehicle[] = [
   ]},
 
   // ── RENAULT ─────────────────────────────────────────────────────────────
-  // Clio — 2015–2024
+  // Clio — 2015–2025
+  { make: "Renault", model: "Clio", year: 2025, variants: [
+    { id: "clio-25-10t90",   label: "1.0 TCe 90 hp CVT",      fuelType: "gasoline", consumption: 5.5, transmission: "CVT" },
+    { id: "clio-25-10t65",   label: "1.0 TCe 65 hp Manuel",   fuelType: "gasoline", consumption: 5.4, transmission: "Manuel" },
+    { id: "clio-25-15h",     label: "1.6 E-Tech Full Hybrid",  fuelType: "hybrid",   consumption: 4.5, transmission: "Otomatik" },
+  ]},
   { make: "Renault", model: "Clio", year: 2024, variants: [
     { id: "clio-24-10t65",   label: "1.0 TCe 65 hp Manuel",  fuelType: "gasoline", consumption: 5.5 },
     { id: "clio-24-10t90",   label: "1.0 TCe 90 hp CVT",     fuelType: "gasoline", consumption: 5.8 },
@@ -526,7 +546,11 @@ export const VEHICLES: Vehicle[] = [
   ]},
 
   // ── HYUNDAI ─────────────────────────────────────────────────────────────
-  // i20 — 2015–2024
+  // i20 — 2015–2025
+  { make: "Hyundai", model: "i20", year: 2025, variants: [
+    { id: "i20-25-10t",      label: "1.0 T-GDi 100 hp iMT",   fuelType: "gasoline", consumption: 5.4, transmission: "Manuel" },
+    { id: "i20-25-12",       label: "1.2 MPI 84 hp Manuel",    fuelType: "gasoline", consumption: 5.7, transmission: "Manuel" },
+  ]},
   { make: "Hyundai", model: "i20", year: 2024, variants: [
     { id: "i20-24-10t",      label: "1.0 T-GDi 100 hp iMT",  fuelType: "gasoline", consumption: 5.5 },
     { id: "i20-24-12",       label: "1.2 MPI 84 hp Manuel",   fuelType: "gasoline", consumption: 5.8 },
@@ -669,7 +693,12 @@ export const VEHICLES: Vehicle[] = [
   ]},
 
   // ── FIAT ────────────────────────────────────────────────────────────────
-  // Egea — 2016–2024 (very popular in Turkey)
+  // Egea — 2016–2025 (very popular in Turkey)
+  { make: "Fiat", model: "Egea", year: 2025, variants: [
+    { id: "egea-25-13",      label: "1.3 Multijet 95 hp Manuel",  fuelType: "diesel",   consumption: 4.4, transmission: "Manuel" },
+    { id: "egea-25-14t",     label: "1.4 T-Jet 120 hp Manuel",    fuelType: "gasoline", consumption: 6.3, transmission: "Manuel" },
+    { id: "egea-25-10t",     label: "1.0 Firefly 100 hp Manuel",  fuelType: "gasoline", consumption: 5.5, transmission: "Manuel" },
+  ]},
   { make: "Fiat", model: "Egea", year: 2024, variants: [
     { id: "egea-24-13",      label: "1.3 Multijet 95 hp Manuel",  fuelType: "diesel",   consumption: 4.5 },
     { id: "egea-24-14t",     label: "1.4 T-Jet 120 hp Manuel",    fuelType: "gasoline", consumption: 6.4 },

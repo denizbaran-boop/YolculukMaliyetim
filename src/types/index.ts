@@ -5,7 +5,8 @@ export interface VehicleVariant {
   label: string; // e.g. "1.8 Hybrid CVT"
   fuelType: FuelType;
   consumption: number; // L/100km for liquid fuels, kWh/100km for EV
-  engineSize?: string; // e.g. "1.8"
+  engineSize?: string;    // e.g. "1.8"
+  transmission?: string;  // e.g. "Manuel", "Otomatik", "CVT", "DSG"
 }
 
 export interface Vehicle {
