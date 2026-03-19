@@ -5,13 +5,25 @@ import type { VehicleVariant, TripMode, CalculationResult } from "@/types";
 import { calculate } from "@/lib/calculator";
 import { useLocation } from "@/hooks/useLocation";
 import VehicleSelector from "@/components/VehicleSelector";
+import ManualConsumptionInput from "@/components/ManualConsumptionInput";
 import TripInputs from "@/components/TripInputs";
 import ResultCard from "@/components/ResultCard";
 import FuelPriceBadge from "@/components/FuelPriceBadge";
 
+type VehicleInputMode = "select" | "manual";
+
 export default function HomePage() {
-  // Vehicle
-  const [variant, setVariant] = useState<VehicleVariant | null>(null);
+  // Vehicle input mode toggle
+  const [vehicleInputMode, setVehicleInputMode] = useState<VehicleInputMode>("select");
+
+  // Variant from VehicleSelector (mode: select)
+  const [selectedVariant, setSelectedVariant] = useState<VehicleVariant | null>(null);
+
+  // Variant from ManualConsumptionInput (mode: manual)
+  const [manualVariant, setManualVariant] = useState<VehicleVariant | null>(null);
+
+  // Active variant — depends on mode
+  const variant = vehicleInputMode === "select" ? selectedVariant : manualVariant;
 
   // Trip
   const [distance, setDistance] = useState("");
@@ -53,6 +65,13 @@ export default function HomePage() {
       fuelPrices
     );
   }, [variant, fuelPrices, distance, mode, durationHours, durationMinutes, avgSpeed, peopleCount]);
+
+  // Switch modes — reset the variant for the inactive mode
+  const handleModeSwitch = (next: VehicleInputMode) => {
+    setVehicleInputMode(next);
+    if (next === "select") setManualVariant(null);
+    else setSelectedVariant(null);
+  };
 
   return (
     <main
@@ -173,27 +192,39 @@ export default function HomePage() {
         {/* Main calculator card */}
         <div className="glass-card p-6 md:p-8 mb-5">
           {/* Section: Vehicle */}
-          <SectionHeader
-            icon={
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <rect x="1" y="3" width="15" height="13" rx="2" />
-                <path d="M16 8h4l3 6v3h-7V8z" />
-                <circle cx="5.5" cy="18.5" r="2.5" />
-                <circle cx="18.5" cy="18.5" r="2.5" />
-              </svg>
-            }
-            title="Araç Seçimi"
-          />
-          <VehicleSelector onVariantChange={setVariant} />
+          <div className="flex items-center justify-between mb-4">
+            <SectionHeader
+              icon={
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <rect x="1" y="3" width="15" height="13" rx="2" />
+                  <path d="M16 8h4l3 6v3h-7V8z" />
+                  <circle cx="5.5" cy="18.5" r="2.5" />
+                  <circle cx="18.5" cy="18.5" r="2.5" />
+                </svg>
+              }
+              title="Araç Seçimi"
+            />
+            {/* Mode toggle */}
+            <VehicleInputModeToggle
+              value={vehicleInputMode}
+              onChange={handleModeSwitch}
+            />
+          </div>
+
+          {vehicleInputMode === "select" ? (
+            <VehicleSelector onVariantChange={setSelectedVariant} />
+          ) : (
+            <ManualConsumptionInput onVariantChange={setManualVariant} />
+          )}
 
           <hr className="divider" />
 
@@ -247,6 +278,8 @@ export default function HomePage() {
   );
 }
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
 function SectionHeader({
   icon,
   title,
@@ -255,7 +288,7 @@ function SectionHeader({
   title: string;
 }) {
   return (
-    <div className="flex items-center gap-2 mb-4">
+    <div className="flex items-center gap-2">
       <span
         className="flex items-center justify-center w-7 h-7 rounded-lg"
         style={{
@@ -271,6 +304,50 @@ function SectionHeader({
       >
         {title}
       </h3>
+    </div>
+  );
+}
+
+function VehicleInputModeToggle({
+  value,
+  onChange,
+}: {
+  value: VehicleInputMode;
+  onChange: (v: VehicleInputMode) => void;
+}) {
+  return (
+    <div
+      className="flex items-center gap-1 p-1 rounded-xl"
+      style={{
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
+      }}
+    >
+      {(
+        [
+          { key: "select", label: "Araçtan Seç" },
+          { key: "manual", label: "Tüketim Gir" },
+        ] as { key: VehicleInputMode; label: string }[]
+      ).map(({ key, label }) => {
+        const active = value === key;
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() => onChange(key)}
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-150"
+            style={{
+              background: active
+                ? "linear-gradient(135deg, rgba(124,58,237,0.5), rgba(168,85,247,0.4))"
+                : "transparent",
+              color: active ? "#e9d5ff" : "var(--text-secondary)",
+              boxShadow: active ? "0 2px 8px rgba(124,58,237,0.3)" : "none",
+            }}
+          >
+            {label}
+          </button>
+        );
+      })}
     </div>
   );
 }
