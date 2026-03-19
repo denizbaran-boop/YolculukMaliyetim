@@ -1,37 +1,71 @@
 import type { FuelPrices } from "@/types";
 
 /**
- * Approximate mid-2025 retail fuel prices in TL for major Turkish cities.
- * These are used as fallback when the API is unavailable.
+ * Approximate March 2026 retail fuel prices in TL for major Turkish cities.
+ * These are static reference values — NOT live data.
  *
- * Validation rule: diesel must be > 50 TL, gasoline > 50 TL
+ * Since there is no external live fuel-price API, all prices are marked
+ * isFallback: true so the UI always shows "Veriler güncel olmayabilir".
+ *
+ * Validation thresholds (reject if below):
+ *   diesel    < 50 TL/L
+ *   gasoline  < 55 TL/L
+ *   lpg       < 25 TL/L
+ *   electric  < 5  TL/kWh
  */
 const CITY_PRICES: Record<string, Omit<FuelPrices, "city" | "updatedAt" | "isFallback">> = {
-  istanbul: { gasoline: 42.99, diesel: 41.44, lpg: 22.10, electric: 6.85 },
-  ankara:   { gasoline: 42.99, diesel: 41.44, lpg: 22.05, electric: 6.72 },
-  izmir:    { gasoline: 43.10, diesel: 41.55, lpg: 22.20, electric: 6.80 },
-  bursa:    { gasoline: 43.05, diesel: 41.50, lpg: 22.15, electric: 6.78 },
-  antalya:  { gasoline: 43.15, diesel: 41.60, lpg: 22.30, electric: 6.90 },
-  adana:    { gasoline: 43.20, diesel: 41.65, lpg: 22.35, electric: 6.88 },
-  konya:    { gasoline: 43.00, diesel: 41.45, lpg: 22.08, electric: 6.75 },
-  gaziantep:{ gasoline: 43.25, diesel: 41.70, lpg: 22.40, electric: 6.92 },
-  kayseri:  { gasoline: 43.10, diesel: 41.55, lpg: 22.18, electric: 6.76 },
-  trabzon:  { gasoline: 43.30, diesel: 41.75, lpg: 22.45, electric: 6.95 },
-  samsun:   { gasoline: 43.18, diesel: 41.62, lpg: 22.28, electric: 6.82 },
-  eskisehir:{ gasoline: 43.02, diesel: 41.46, lpg: 22.12, electric: 6.73 },
+  istanbul:  { gasoline: 68.55, diesel: 63.25, lpg: 32.10, electric: 8.90 },
+  ankara:    { gasoline: 68.50, diesel: 63.20, lpg: 32.05, electric: 8.75 },
+  izmir:     { gasoline: 68.65, diesel: 63.35, lpg: 32.20, electric: 8.85 },
+  bursa:     { gasoline: 68.55, diesel: 63.25, lpg: 32.15, electric: 8.80 },
+  antalya:   { gasoline: 68.70, diesel: 63.40, lpg: 32.30, electric: 8.95 },
+  adana:     { gasoline: 68.75, diesel: 63.45, lpg: 32.35, electric: 8.92 },
+  konya:     { gasoline: 68.45, diesel: 63.15, lpg: 32.00, electric: 8.72 },
+  gaziantep: { gasoline: 68.80, diesel: 63.50, lpg: 32.40, electric: 8.95 },
+  kayseri:   { gasoline: 68.60, diesel: 63.30, lpg: 32.18, electric: 8.76 },
+  trabzon:   { gasoline: 68.85, diesel: 63.55, lpg: 32.45, electric: 9.00 },
+  samsun:    { gasoline: 68.68, diesel: 63.38, lpg: 32.28, electric: 8.82 },
+  eskisehir: { gasoline: 68.48, diesel: 63.18, lpg: 32.08, electric: 8.73 },
+  mersin:    { gasoline: 68.72, diesel: 63.42, lpg: 32.32, electric: 8.91 },
+  diyarbakir:{ gasoline: 68.78, diesel: 63.48, lpg: 32.38, electric: 8.93 },
+  kocaeli:   { gasoline: 68.52, diesel: 63.22, lpg: 32.12, electric: 8.78 },
+  sakarya:   { gasoline: 68.50, diesel: 63.20, lpg: 32.10, electric: 8.77 },
 };
 
-/** Turkey national average (fallback of last resort) */
+/** Turkey national average — used when city is not in the list */
 export const TURKEY_AVERAGE: Omit<FuelPrices, "city" | "updatedAt" | "isFallback"> = {
-  gasoline: 43.10,
-  diesel:   41.55,
-  lpg:      22.20,
-  electric: 6.80,
+  gasoline: 68.60,
+  diesel:   63.30,
+  lpg:      32.15,
+  electric: 8.85,
 };
 
 /**
- * Attempts to match a city name (Turkish, case-insensitive) to a price record.
- * Normalises common Turkish characters before matching.
+ * Validates that fuel prices are within realistic bounds for Turkey.
+ * Rejects stale or obviously incorrect values before they reach the UI.
+ */
+export function validateFuelPrice(type: keyof typeof TURKEY_AVERAGE, value: number): boolean {
+  switch (type) {
+    case "diesel":    return value >= 50;
+    case "gasoline":  return value >= 55;
+    case "lpg":       return value >= 25;
+    case "electric":  return value >= 5;
+    default:          return true;
+  }
+}
+
+export function validateFuelPrices(prices: Partial<FuelPrices>): boolean {
+  if (prices.diesel    !== undefined && !validateFuelPrice("diesel",    prices.diesel))    return false;
+  if (prices.gasoline  !== undefined && !validateFuelPrice("gasoline",  prices.gasoline))  return false;
+  if (prices.lpg       !== undefined && !validateFuelPrice("lpg",       prices.lpg))       return false;
+  if (prices.electric  !== undefined && !validateFuelPrice("electric",  prices.electric))  return false;
+  return true;
+}
+
+/**
+ * Normalises Turkish characters and matches a city name to a price record.
+ * All returned prices carry isFallback: true because this is static reference data,
+ * not a live API feed. The UI will show "Veriler güncel olmayabilir" accordingly.
  */
 export function getPricesForCity(cityName: string): FuelPrices {
   const normalised = cityName
@@ -44,29 +78,18 @@ export function getPricesForCity(cityName: string): FuelPrices {
     .replace(/ö/g, "o")
     .replace(/ü/g, "u");
 
-  const matched = Object.entries(CITY_PRICES).find(([key]) =>
-    normalised.includes(key) || key.includes(normalised)
+  const matched = Object.entries(CITY_PRICES).find(
+    ([key]) => normalised.includes(key) || key.includes(normalised)
   );
 
   const prices = matched ? matched[1] : TURKEY_AVERAGE;
   const displayCity = matched ? cityName : "Türkiye";
 
+  // Always isFallback: true — we have no live price feed
   return {
     ...prices,
     city: displayCity,
     updatedAt: new Date().toISOString(),
-    isFallback: !matched,
+    isFallback: true,
   };
-}
-
-/**
- * Validates that fuel prices are within realistic bounds for Turkey.
- * Returns false if any price looks suspicious.
- */
-export function validateFuelPrices(prices: Partial<FuelPrices>): boolean {
-  if (prices.diesel !== undefined && prices.diesel < 30) return false;
-  if (prices.gasoline !== undefined && prices.gasoline < 30) return false;
-  if (prices.lpg !== undefined && prices.lpg < 10) return false;
-  if (prices.electric !== undefined && prices.electric < 2) return false;
-  return true;
 }
