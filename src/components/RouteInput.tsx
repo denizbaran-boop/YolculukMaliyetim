@@ -62,7 +62,11 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
   // ── Autocomplete: origin ────────────────────────────────────────────────────
   useEffect(() => {
     if (originPlace) return;
-    if (originQuery.length < 2) { setOriginSuggs([]); return; }
+    if (originQuery.length < 2) {
+      setOriginSuggs([]);
+      setLoadingOrigin(false);
+      return;
+    }
     setLoadingOrigin(true);
     const currentId = ++originRequestId.current;
     const t = setTimeout(async () => {
@@ -86,7 +90,11 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
   // ── Autocomplete: destination ───────────────────────────────────────────────
   useEffect(() => {
     if (destPlace) return;
-    if (destQuery.length < 2) { setDestSuggs([]); return; }
+    if (destQuery.length < 2) {
+      setDestSuggs([]);
+      setLoadingDest(false);
+      return;
+    }
     setLoadingDest(true);
     const currentId = ++destRequestId.current;
     const t = setTimeout(async () => {
@@ -107,99 +115,6 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
     return () => clearTimeout(t);
   }, [destQuery, destPlace]);
 
-  // ── Route fetch ─────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!originPlace || !destPlace) {
-      routeAbortRef.current?.abort();
-      inFlightKeyRef.current = null;
-      lastFetchedKeyRef.current = null;
-      setRouteResult(null);
-      onRouteChangeRef.current(null);
-      return;
-    }
-
-    const routeKey = `${originPlace.placeId}::${destPlace.placeId}`;
-    const now = Date.now();
-    const cached = lastRouteCacheRef.current;
-    if (cached && cached.key === routeKey && cached.expiresAt > now) {
-      setRouteError(null);
-      setLoadingRoute(false);
-      setRouteResult(cached.value);
-      onRouteChangeRef.current(cached.value);
-      return;
-    }
-    if (inFlightKeyRef.current === routeKey) return;
-    if (lastFetchedKeyRef.current === routeKey && routeResult) return;
-
-    let cancelled = false;
-    setLoadingRoute(true);
-    setRouteError(null);
-    inFlightKeyRef.current = routeKey;
-
-    routeAbortRef.current?.abort();
-    const controller = new AbortController();
-    routeAbortRef.current = controller;
-
-    fetch(
-      `/api/route?originPlaceId=${encodeURIComponent(originPlace.placeId)}` +
-      `&destinationPlaceId=${encodeURIComponent(destPlace.placeId)}`,
-      { signal: controller.signal }
-    )
-      .then(async (r) => {
-        const data = await r.json();
-        if (!r.ok) {
-          throw new Error(data.error ?? "route failed");
-        }
-        return data;
-      })
-      .then((data) => {
-        if (cancelled) return;
-        if (data.error) {
-          setRouteError("Güzergah hesaplanamadı. Lütfen tekrar deneyin.");
-          setRouteResult(null);
-          onRouteChangeRef.current(null);
-        } else {
-          const info: RouteInfo = {
-            distanceKm:    data.distanceKm,
-            durationText:  data.durationText,
-            durationMinutes: data.durationMinutes,
-            polyline: data.polyline ?? null,
-            origin: data.origin ?? null,
-            destination: data.destination ?? null,
-          };
-          lastRouteCacheRef.current = {
-            key: routeKey,
-            expiresAt: Date.now() + ROUTE_CACHE_TTL_MS,
-            value: info,
-          };
-          lastFetchedKeyRef.current = routeKey;
-          setRouteResult(info);
-          onRouteChangeRef.current(info);
-        }
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setRouteError("Güzergah bilgisi alınamadı.");
-        setRouteResult(null);
-        onRouteChangeRef.current(null);
-        lastFetchedKeyRef.current = null;
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingRoute(false);
-        if (inFlightKeyRef.current === routeKey) {
-          inFlightKeyRef.current = null;
-        }
-      });
-
-    return () => {
-      cancelled = true;
-      controller.abort();
-      if (inFlightKeyRef.current === routeKey) {
-        inFlightKeyRef.current = null;
-      }
-    };
-  }, [originPlace, destPlace, routeResult]);
-
   // ── Close dropdowns on outside click ───────────────────────────────────────
   useEffect(() => {
     function onDown(e: MouseEvent) {
@@ -213,6 +128,47 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
   }, []);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
+  const canCalculate = Boolean(originPlace && destPlace);
+
+  function clearRouteState() {
+    routeAbortRef.current?.abort();
+    routeAbortRef.current = null;
+    inFlightKeyRef.current = null;
+    lastFetchedKeyRef.current = null;
+    setLoadingRoute(false);
+    setRouteError(null);
+    setRouteResult(null);
+    onRouteChangeRef.current(null);
+  }
+
+  function handleOriginChange(value: string) {
+    setOriginQuery(value);
+    if (originPlace && value !== originPlace.description) {
+      setOriginPlace(null);
+      clearRouteState();
+    }
+    if (value.trim().length >= 2) {
+      setShowOriginDD(true);
+    } else {
+      setShowOriginDD(false);
+      setOriginSuggs([]);
+    }
+  }
+
+  function handleDestChange(value: string) {
+    setDestQuery(value);
+    if (destPlace && value !== destPlace.description) {
+      setDestPlace(null);
+      clearRouteState();
+    }
+    if (value.trim().length >= 2) {
+      setShowDestDD(true);
+    } else {
+      setShowDestDD(false);
+      setDestSuggs([]);
+    }
+  }
+
   function selectOrigin(p: PlacePrediction) {
     setOriginPlace(p);
     setOriginQuery(p.description);
@@ -231,6 +187,7 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
     setOriginPlace(null);
     setOriginQuery("");
     setOriginSuggs([]);
+    setShowOriginDD(false);
     resetRoute();
   }
 
@@ -238,13 +195,12 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
     setDestPlace(null);
     setDestQuery("");
     setDestSuggs([]);
+    setShowDestDD(false);
     resetRoute();
   }
 
   function resetRoute() {
-    setRouteResult(null);
-    setRouteError(null);
-    onRouteChangeRef.current(null);
+    clearRouteState();
   }
 
   function swapPlaces() {
@@ -255,6 +211,74 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
     setDestPlace(tmpPlace);
     setDestQuery(tmpQuery);
     resetRoute();
+  }
+
+  async function handleCalculate() {
+    if (!originPlace || !destPlace) return;
+
+    const routeKey = `${originPlace.placeId}::${destPlace.placeId}`;
+    const now = Date.now();
+    const cached = lastRouteCacheRef.current;
+
+    if (cached && cached.key === routeKey && cached.expiresAt > now) {
+      setRouteError(null);
+      setRouteResult(cached.value);
+      onRouteChangeRef.current(cached.value);
+      return;
+    }
+
+    if (inFlightKeyRef.current === routeKey) return;
+    if (lastFetchedKeyRef.current === routeKey && routeResult) {
+      onRouteChangeRef.current(routeResult);
+      return;
+    }
+
+    setLoadingRoute(true);
+    setRouteError(null);
+    inFlightKeyRef.current = routeKey;
+
+    routeAbortRef.current?.abort();
+    const controller = new AbortController();
+    routeAbortRef.current = controller;
+
+    try {
+      const response = await fetch(
+        `/api/route?originPlaceId=${encodeURIComponent(originPlace.placeId)}`
+          + `&destinationPlaceId=${encodeURIComponent(destPlace.placeId)}`,
+        { signal: controller.signal }
+      );
+      const data = await response.json();
+      if (!response.ok || data.error) {
+        throw new Error(data.error ?? "route failed");
+      }
+
+      const info: RouteInfo = {
+        distanceKm: data.distanceKm,
+        durationText: data.durationText,
+        durationMinutes: data.durationMinutes,
+        polyline: data.polyline ?? null,
+        origin: data.origin ?? null,
+        destination: data.destination ?? null,
+      };
+      lastRouteCacheRef.current = {
+        key: routeKey,
+        expiresAt: Date.now() + ROUTE_CACHE_TTL_MS,
+        value: info,
+      };
+      lastFetchedKeyRef.current = routeKey;
+      setRouteResult(info);
+      onRouteChangeRef.current(info);
+    } catch {
+      setRouteError("Güzergah bilgisi alınamadı.");
+      setRouteResult(null);
+      onRouteChangeRef.current(null);
+      lastFetchedKeyRef.current = null;
+    } finally {
+      if (inFlightKeyRef.current === routeKey) {
+        inFlightKeyRef.current = null;
+      }
+      setLoadingRoute(false);
+    }
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -271,21 +295,30 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
             <input
               type="text"
               className="input-base"
-              style={{ paddingLeft: 38, paddingRight: originPlace ? 36 : 16 }}
+              style={{
+                paddingLeft: 38,
+                paddingRight: originPlace ? 64 : 16,
+                borderColor: originPlace ? "rgba(16,185,129,0.55)" : undefined,
+                boxShadow: originPlace ? "0 0 0 2px rgba(16,185,129,0.12)" : undefined,
+              }}
               placeholder="Başlangıç noktası ara…"
               value={originQuery}
-              onChange={(e) => {
-                if (originPlace) clearOrigin();
-                setOriginQuery(e.target.value);
+              onChange={(e) => handleOriginChange(e.target.value)}
+              onFocus={() => {
+                if (!originPlace && originQuery.trim().length >= 2) setShowOriginDD(true);
               }}
-              onFocus={() => { if (originSuggs.length > 0) setShowOriginDD(true); }}
             />
             {loadingOrigin && <SpinnerOverlay />}
-            {originPlace && <ClearButton onClick={clearOrigin} />}
+            {originPlace && <SelectedBadge />}
+            {originPlace && <ClearButton onClick={clearOrigin} right={34} />}
           </div>
-          {showOriginDD && originSuggs.length > 0 && (
-            <SuggestionDropdown predictions={originSuggs} onSelect={selectOrigin} />
-          )}
+          <SuggestionDropdown
+            visible={showOriginDD && !originPlace}
+            predictions={originSuggs}
+            query={originQuery}
+            loading={loadingOrigin}
+            onSelect={selectOrigin}
+          />
         </div>
       </div>
 
@@ -321,34 +354,48 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
             <input
               type="text"
               className="input-base"
-              style={{ paddingLeft: 38, paddingRight: destPlace ? 36 : 16 }}
+              style={{
+                paddingLeft: 38,
+                paddingRight: destPlace ? 64 : 16,
+                borderColor: destPlace ? "rgba(16,185,129,0.55)" : undefined,
+                boxShadow: destPlace ? "0 0 0 2px rgba(16,185,129,0.12)" : undefined,
+              }}
               placeholder="Varış noktası ara…"
               value={destQuery}
-              onChange={(e) => {
-                if (destPlace) clearDest();
-                setDestQuery(e.target.value);
+              onChange={(e) => handleDestChange(e.target.value)}
+              onFocus={() => {
+                if (!destPlace && destQuery.trim().length >= 2) setShowDestDD(true);
               }}
-              onFocus={() => { if (destSuggs.length > 0) setShowDestDD(true); }}
             />
             {loadingDest && <SpinnerOverlay />}
-            {destPlace && <ClearButton onClick={clearDest} />}
+            {destPlace && <SelectedBadge />}
+            {destPlace && <ClearButton onClick={clearDest} right={34} />}
           </div>
-          {showDestDD && destSuggs.length > 0 && (
-            <SuggestionDropdown predictions={destSuggs} onSelect={selectDest} />
-          )}
+          <SuggestionDropdown
+            visible={showDestDD && !destPlace}
+            predictions={destSuggs}
+            query={destQuery}
+            loading={loadingDest}
+            onSelect={selectDest}
+          />
         </div>
       </div>
 
-      {/* Route state */}
-      {loadingRoute && (
-        <div className="flex items-center justify-center gap-2 py-2" style={{ color: "var(--text-secondary)" }}>
+      <button
+        type="button"
+        className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        disabled={!canCalculate || loadingRoute}
+        onClick={handleCalculate}
+      >
+        {loadingRoute && (
           <svg className="route-spinner" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
           </svg>
-          <span className="text-sm">Güzergah hesaplanıyor…</span>
-        </div>
-      )}
+        )}
+        <span>{loadingRoute ? "Hesaplanıyor..." : "Hesapla"}</span>
+      </button>
 
+      {/* Route state */}
       {routeError && !loadingRoute && (
         <p className="text-sm text-center" style={{ color: "#f87171" }}>{routeError}</p>
       )}
@@ -388,12 +435,20 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
 function SuggestionDropdown({
+  visible,
   predictions,
+  query,
+  loading,
   onSelect,
 }: {
+  visible: boolean;
   predictions: PlacePrediction[];
+  query: string;
+  loading: boolean;
   onSelect: (p: PlacePrediction) => void;
 }) {
+  if (!visible) return null;
+
   return (
     <div
       style={{
@@ -405,7 +460,17 @@ function SuggestionDropdown({
         boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
       }}
     >
-      {predictions.map((p, i) => (
+      {loading && (
+        <div className="px-4 py-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+          Öneriler yükleniyor...
+        </div>
+      )}
+      {!loading && query.trim().length >= 2 && predictions.length === 0 && (
+        <div className="px-4 py-3 text-sm" style={{ color: "var(--text-secondary)" }}>
+          Sonuç bulunamadı, farklı bir arama deneyin.
+        </div>
+      )}
+      {!loading && predictions.map((p, i) => (
         <button
           key={p.placeId}
           type="button"
@@ -489,13 +554,28 @@ function RouteResultBanner({ result }: { result: RouteInfo }) {
   );
 }
 
-function ClearButton({ onClick }: { onClick: () => void }) {
+function SelectedBadge() {
+  return (
+    <span
+      style={{
+        position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+        color: "#34d399", display: "flex", alignItems: "center", pointerEvents: "none",
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 6L9 17l-5-5" />
+      </svg>
+    </span>
+  );
+}
+
+function ClearButton({ onClick, right = 12 }: { onClick: () => void; right?: number }) {
   return (
     <button
       type="button"
       onClick={onClick}
       style={{
-        position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
+        position: "absolute", right, top: "50%", transform: "translateY(-50%)",
         background: "none", border: "none", cursor: "pointer", padding: 0,
         color: "var(--text-secondary)", display: "flex", alignItems: "center",
       }}
