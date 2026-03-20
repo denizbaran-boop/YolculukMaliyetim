@@ -164,6 +164,12 @@ export const VEHICLES: Vehicle[] = [
     { id: "golf-24-20tdi",   label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 4.8 },
     { id: "golf-24-14gte",   label: "1.4 GTE Plug-in Hybrid",fuelType: "hybrid",   consumption: 1.5 },
   ]},
+  { make: "Volkswagen", model: "Golf", year: 2023, variants: [
+    { id: "golf-23-10t",     label: "1.0 TSI 110 hp Manuel", fuelType: "gasoline", consumption: 5.5 },
+    { id: "golf-23-15t",     label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 5.9 },
+    { id: "golf-23-20tdi",   label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 4.9 },
+    { id: "golf-23-14gte",   label: "1.4 GTE Plug-in Hybrid",fuelType: "hybrid",   consumption: 1.5 },
+  ]},
   { make: "Volkswagen", model: "Golf", year: 2022, variants: [
     { id: "golf-22-10t",     label: "1.0 TSI 110 hp Manuel", fuelType: "gasoline", consumption: 5.5 },
     { id: "golf-22-15t",     label: "1.5 TSI 130 hp DSG",    fuelType: "gasoline", consumption: 6.0 },
@@ -202,14 +208,26 @@ export const VEHICLES: Vehicle[] = [
     { id: "golf-15-16tdi",   label: "1.6 TDI 110 hp Manuel", fuelType: "diesel",   consumption: 5.2 },
   ]},
 
-  // Polo — 2018–2024
+  // Polo — 2018–2025
+  { make: "Volkswagen", model: "Polo", year: 2025, variants: [
+    { id: "polo-25-10t80",   label: "1.0 TSI 80 hp Manuel",  fuelType: "gasoline", consumption: 4.9 },
+    { id: "polo-25-10t95",   label: "1.0 TSI 95 hp DSG",     fuelType: "gasoline", consumption: 5.2 },
+  ]},
   { make: "Volkswagen", model: "Polo", year: 2024, variants: [
     { id: "polo-24-10t80",   label: "1.0 TSI 80 hp Manuel",  fuelType: "gasoline", consumption: 5.0 },
     { id: "polo-24-10t95",   label: "1.0 TSI 95 hp DSG",     fuelType: "gasoline", consumption: 5.3 },
   ]},
+  { make: "Volkswagen", model: "Polo", year: 2023, variants: [
+    { id: "polo-23-10t80",   label: "1.0 TSI 80 hp Manuel",  fuelType: "gasoline", consumption: 5.0 },
+    { id: "polo-23-10t95",   label: "1.0 TSI 95 hp DSG",     fuelType: "gasoline", consumption: 5.3 },
+  ]},
   { make: "Volkswagen", model: "Polo", year: 2022, variants: [
     { id: "polo-22-10t80",   label: "1.0 TSI 80 hp Manuel",  fuelType: "gasoline", consumption: 5.1 },
     { id: "polo-22-10t95",   label: "1.0 TSI 95 hp DSG",     fuelType: "gasoline", consumption: 5.4 },
+  ]},
+  { make: "Volkswagen", model: "Polo", year: 2021, variants: [
+    { id: "polo-21-10t",     label: "1.0 TSI 95 hp Manuel",  fuelType: "gasoline", consumption: 5.4 },
+    { id: "polo-21-16tdi",   label: "1.6 TDI 95 hp Manuel",  fuelType: "diesel",   consumption: 4.5 },
   ]},
   { make: "Volkswagen", model: "Polo", year: 2020, variants: [
     { id: "polo-20-10t",     label: "1.0 TSI 95 hp Manuel",  fuelType: "gasoline", consumption: 5.5 },
@@ -220,15 +238,30 @@ export const VEHICLES: Vehicle[] = [
     { id: "polo-18-16tdi",   label: "1.6 TDI 95 hp Manuel",  fuelType: "diesel",   consumption: 4.6 },
   ]},
 
-  // Passat — 2015–2024
+  // Passat — 2015–2025
+  { make: "Volkswagen", model: "Passat", year: 2025, variants: [
+    { id: "passat-25-15t",   label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 6.4 },
+    { id: "passat-25-20tdi", label: "2.0 TDI 200 hp DSG",    fuelType: "diesel",   consumption: 5.1 },
+    { id: "passat-25-phev",  label: "1.5 eHybrid Plug-in",   fuelType: "hybrid",   consumption: 1.4 },
+  ]},
   { make: "Volkswagen", model: "Passat", year: 2024, variants: [
     { id: "passat-24-15t",   label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 6.5 },
     { id: "passat-24-20tdi", label: "2.0 TDI 200 hp DSG",    fuelType: "diesel",   consumption: 5.2 },
+  ]},
+  { make: "Volkswagen", model: "Passat", year: 2023, variants: [
+    { id: "passat-23-15t",   label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 6.5 },
+    { id: "passat-23-20tdi", label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 5.3 },
+    { id: "passat-23-phev",  label: "1.4 GTE Plug-in Hybrid",fuelType: "hybrid",   consumption: 1.6 },
   ]},
   { make: "Volkswagen", model: "Passat", year: 2022, variants: [
     { id: "passat-22-15t",   label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 6.6 },
     { id: "passat-22-20tdi", label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 5.4 },
     { id: "passat-22-phev",  label: "1.4 GTE Plug-in Hybrid",fuelType: "hybrid",   consumption: 1.7 },
+  ]},
+  { make: "Volkswagen", model: "Passat", year: 2021, variants: [
+    { id: "passat-21-15t",   label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 6.7 },
+    { id: "passat-21-20tdi", label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 5.4 },
+    { id: "passat-21-phev",  label: "1.4 GTE Plug-in Hybrid",fuelType: "hybrid",   consumption: 1.7 },
   ]},
   { make: "Volkswagen", model: "Passat", year: 2020, variants: [
     { id: "passat-20-15t",   label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 6.8 },
@@ -247,10 +280,18 @@ export const VEHICLES: Vehicle[] = [
     { id: "passat-15-20tdi", label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 5.7 },
   ]},
 
-  // ID.4
+  // ID.4 — 2021–2025
+  { make: "Volkswagen", model: "ID.4", year: 2025, variants: [
+    { id: "id4-25-std",      label: "52 kWh Standard Range", fuelType: "electric", consumption: 15.5 },
+    { id: "id4-25-pro",      label: "77 kWh Pro Performance",fuelType: "electric", consumption: 16.1 },
+  ]},
   { make: "Volkswagen", model: "ID.4", year: 2024, variants: [
     { id: "id4-24-std",      label: "52 kWh Standard Range", fuelType: "electric", consumption: 15.8 },
     { id: "id4-24-pro",      label: "77 kWh Pro Performance",fuelType: "electric", consumption: 16.4 },
+  ]},
+  { make: "Volkswagen", model: "ID.4", year: 2023, variants: [
+    { id: "id4-23-std",      label: "52 kWh Standard Range", fuelType: "electric", consumption: 16.0 },
+    { id: "id4-23-pro",      label: "77 kWh Pro Performance",fuelType: "electric", consumption: 16.8 },
   ]},
   { make: "Volkswagen", model: "ID.4", year: 2022, variants: [
     { id: "id4-22-std",      label: "52 kWh Standard Range", fuelType: "electric", consumption: 16.2 },
@@ -260,14 +301,26 @@ export const VEHICLES: Vehicle[] = [
     { id: "id4-21-pro",      label: "77 kWh Pro Performance",fuelType: "electric", consumption: 17.5 },
   ]},
 
-  // T-Roc
+  // T-Roc — 2018–2025
+  { make: "Volkswagen", model: "T-Roc", year: 2025, variants: [
+    { id: "troc-25-10t",     label: "1.0 TSI 115 hp Manuel", fuelType: "gasoline", consumption: 6.2 },
+    { id: "troc-25-15t",     label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 6.8 },
+  ]},
   { make: "Volkswagen", model: "T-Roc", year: 2024, variants: [
     { id: "troc-24-10t",     label: "1.0 TSI 115 hp Manuel", fuelType: "gasoline", consumption: 6.4 },
     { id: "troc-24-15t",     label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 7.0 },
   ]},
+  { make: "Volkswagen", model: "T-Roc", year: 2023, variants: [
+    { id: "troc-23-10t",     label: "1.0 TSI 115 hp Manuel", fuelType: "gasoline", consumption: 6.4 },
+    { id: "troc-23-15t",     label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 7.0 },
+  ]},
   { make: "Volkswagen", model: "T-Roc", year: 2022, variants: [
     { id: "troc-22-10t",     label: "1.0 TSI 115 hp Manuel", fuelType: "gasoline", consumption: 6.5 },
     { id: "troc-22-20tdi",   label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 5.3 },
+  ]},
+  { make: "Volkswagen", model: "T-Roc", year: 2021, variants: [
+    { id: "troc-21-10t",     label: "1.0 TSI 115 hp Manuel", fuelType: "gasoline", consumption: 6.8 },
+    { id: "troc-21-20tdi",   label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 5.4 },
   ]},
   { make: "Volkswagen", model: "T-Roc", year: 2020, variants: [
     { id: "troc-20-15t",     label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 7.2 },
@@ -276,6 +329,80 @@ export const VEHICLES: Vehicle[] = [
   { make: "Volkswagen", model: "T-Roc", year: 2018, variants: [
     { id: "troc-18-15t",     label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 7.3 },
     { id: "troc-18-20tdi",   label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 5.5 },
+  ]},
+
+  // Tiguan — 2020–2025
+  { make: "Volkswagen", model: "Tiguan", year: 2025, variants: [
+    { id: "tiguan-25-15t",   label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 7.0 },
+    { id: "tiguan-25-20tdi", label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 5.5 },
+    { id: "tiguan-25-ehybrid",label:"1.5 eHybrid 204 hp DSG",fuelType: "hybrid",   consumption: 1.5 },
+  ]},
+  { make: "Volkswagen", model: "Tiguan", year: 2024, variants: [
+    { id: "tiguan-24-15t",   label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 7.2 },
+    { id: "tiguan-24-20tdi", label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 5.6 },
+    { id: "tiguan-24-ehybrid",label:"1.5 eHybrid 204 hp DSG",fuelType: "hybrid",   consumption: 1.6 },
+  ]},
+  { make: "Volkswagen", model: "Tiguan", year: 2023, variants: [
+    { id: "tiguan-23-15t",   label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 7.4 },
+    { id: "tiguan-23-20tdi", label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 5.7 },
+    { id: "tiguan-23-14gte", label: "1.4 GTE Plug-in Hybrid",fuelType: "hybrid",   consumption: 1.8 },
+  ]},
+  { make: "Volkswagen", model: "Tiguan", year: 2022, variants: [
+    { id: "tiguan-22-15t",   label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 7.5 },
+    { id: "tiguan-22-20tdi", label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 5.8 },
+    { id: "tiguan-22-14gte", label: "1.4 GTE Plug-in Hybrid",fuelType: "hybrid",   consumption: 1.8 },
+  ]},
+  { make: "Volkswagen", model: "Tiguan", year: 2021, variants: [
+    { id: "tiguan-21-15t",   label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 7.6 },
+    { id: "tiguan-21-20tdi", label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 5.9 },
+  ]},
+  { make: "Volkswagen", model: "Tiguan", year: 2020, variants: [
+    { id: "tiguan-20-15t",   label: "1.5 TSI 150 hp DSG",    fuelType: "gasoline", consumption: 7.8 },
+    { id: "tiguan-20-20tdi", label: "2.0 TDI 150 hp DSG",    fuelType: "diesel",   consumption: 6.0 },
+  ]},
+
+  // Taigo — 2022–2025
+  { make: "Volkswagen", model: "Taigo", year: 2025, variants: [
+    { id: "taigo-25-10t",    label: "1.0 TSI 95 hp Manuel",  fuelType: "gasoline", consumption: 5.7 },
+    { id: "taigo-25-10t110", label: "1.0 TSI 110 hp DSG",    fuelType: "gasoline", consumption: 6.0 },
+  ]},
+  { make: "Volkswagen", model: "Taigo", year: 2024, variants: [
+    { id: "taigo-24-10t",    label: "1.0 TSI 95 hp Manuel",  fuelType: "gasoline", consumption: 5.8 },
+    { id: "taigo-24-10t110", label: "1.0 TSI 110 hp DSG",    fuelType: "gasoline", consumption: 6.1 },
+  ]},
+  { make: "Volkswagen", model: "Taigo", year: 2023, variants: [
+    { id: "taigo-23-10t",    label: "1.0 TSI 95 hp Manuel",  fuelType: "gasoline", consumption: 5.9 },
+    { id: "taigo-23-10t110", label: "1.0 TSI 110 hp DSG",    fuelType: "gasoline", consumption: 6.2 },
+  ]},
+  { make: "Volkswagen", model: "Taigo", year: 2022, variants: [
+    { id: "taigo-22-10t",    label: "1.0 TSI 95 hp Manuel",  fuelType: "gasoline", consumption: 6.0 },
+    { id: "taigo-22-10t110", label: "1.0 TSI 110 hp DSG",    fuelType: "gasoline", consumption: 6.3 },
+  ]},
+
+  // T-Cross — 2020–2025
+  { make: "Volkswagen", model: "T-Cross", year: 2025, variants: [
+    { id: "tcross-25-10t95", label: "1.0 TSI 95 hp Manuel",  fuelType: "gasoline", consumption: 5.7 },
+    { id: "tcross-25-10t115",label: "1.0 TSI 115 hp DSG",    fuelType: "gasoline", consumption: 6.0 },
+  ]},
+  { make: "Volkswagen", model: "T-Cross", year: 2024, variants: [
+    { id: "tcross-24-10t95", label: "1.0 TSI 95 hp Manuel",  fuelType: "gasoline", consumption: 5.8 },
+    { id: "tcross-24-10t115",label: "1.0 TSI 115 hp DSG",    fuelType: "gasoline", consumption: 6.1 },
+  ]},
+  { make: "Volkswagen", model: "T-Cross", year: 2023, variants: [
+    { id: "tcross-23-10t95", label: "1.0 TSI 95 hp Manuel",  fuelType: "gasoline", consumption: 5.9 },
+    { id: "tcross-23-10t115",label: "1.0 TSI 115 hp DSG",    fuelType: "gasoline", consumption: 6.2 },
+  ]},
+  { make: "Volkswagen", model: "T-Cross", year: 2022, variants: [
+    { id: "tcross-22-10t95", label: "1.0 TSI 95 hp Manuel",  fuelType: "gasoline", consumption: 6.0 },
+    { id: "tcross-22-10t115",label: "1.0 TSI 115 hp DSG",    fuelType: "gasoline", consumption: 6.3 },
+  ]},
+  { make: "Volkswagen", model: "T-Cross", year: 2021, variants: [
+    { id: "tcross-21-10t95", label: "1.0 TSI 95 hp Manuel",  fuelType: "gasoline", consumption: 6.1 },
+    { id: "tcross-21-10t115",label: "1.0 TSI 115 hp DSG",    fuelType: "gasoline", consumption: 6.4 },
+  ]},
+  { make: "Volkswagen", model: "T-Cross", year: 2020, variants: [
+    { id: "tcross-20-10t95", label: "1.0 TSI 95 hp Manuel",  fuelType: "gasoline", consumption: 6.2 },
+    { id: "tcross-20-10t115",label: "1.0 TSI 115 hp DSG",    fuelType: "gasoline", consumption: 6.5 },
   ]},
 
   // ── RENAULT ─────────────────────────────────────────────────────────────
@@ -362,17 +489,34 @@ export const VEHICLES: Vehicle[] = [
   ]},
 
   // ── BMW ─────────────────────────────────────────────────────────────────
-  // 3 Serisi — 2015–2024
+  // 3 Serisi — 2015–2025
+  { make: "BMW", model: "3 Serisi", year: 2025, variants: [
+    { id: "bmw3-25-320i",    label: "320i 184 hp Otomatik",  fuelType: "gasoline", consumption: 6.4 },
+    { id: "bmw3-25-330i",    label: "330i 258 hp Otomatik",  fuelType: "gasoline", consumption: 6.9 },
+    { id: "bmw3-25-320d",    label: "320d 190 hp Otomatik",  fuelType: "diesel",   consumption: 4.9 },
+    { id: "bmw3-25-330e",    label: "330e Plug-in Hybrid",   fuelType: "hybrid",   consumption: 2.0 },
+  ]},
   { make: "BMW", model: "3 Serisi", year: 2024, variants: [
     { id: "bmw3-24-320i",    label: "320i 184 hp Otomatik",  fuelType: "gasoline", consumption: 6.5 },
     { id: "bmw3-24-330i",    label: "330i 258 hp Otomatik",  fuelType: "gasoline", consumption: 7.0 },
     { id: "bmw3-24-320d",    label: "320d 190 hp Otomatik",  fuelType: "diesel",   consumption: 5.0 },
     { id: "bmw3-24-330e",    label: "330e Plug-in Hybrid",   fuelType: "hybrid",   consumption: 2.1 },
   ]},
+  { make: "BMW", model: "3 Serisi", year: 2023, variants: [
+    { id: "bmw3-23-320i",    label: "320i 184 hp Otomatik",  fuelType: "gasoline", consumption: 6.6 },
+    { id: "bmw3-23-330i",    label: "330i 258 hp Otomatik",  fuelType: "gasoline", consumption: 7.1 },
+    { id: "bmw3-23-320d",    label: "320d 190 hp Otomatik",  fuelType: "diesel",   consumption: 5.0 },
+    { id: "bmw3-23-330e",    label: "330e Plug-in Hybrid",   fuelType: "hybrid",   consumption: 2.1 },
+  ]},
   { make: "BMW", model: "3 Serisi", year: 2022, variants: [
     { id: "bmw3-22-320i",    label: "320i 184 hp Otomatik",  fuelType: "gasoline", consumption: 6.7 },
     { id: "bmw3-22-320d",    label: "320d 190 hp Otomatik",  fuelType: "diesel",   consumption: 5.1 },
     { id: "bmw3-22-330e",    label: "330e Plug-in Hybrid",   fuelType: "hybrid",   consumption: 2.2 },
+  ]},
+  { make: "BMW", model: "3 Serisi", year: 2021, variants: [
+    { id: "bmw3-21-320i",    label: "320i 184 hp Otomatik",  fuelType: "gasoline", consumption: 6.8 },
+    { id: "bmw3-21-320d",    label: "320d 190 hp Otomatik",  fuelType: "diesel",   consumption: 5.1 },
+    { id: "bmw3-21-330e",    label: "330e Plug-in Hybrid",   fuelType: "hybrid",   consumption: 2.2 },
   ]},
   { make: "BMW", model: "3 Serisi", year: 2020, variants: [
     { id: "bmw3-20-320i",    label: "320i 184 hp Otomatik",  fuelType: "gasoline", consumption: 6.9 },
@@ -391,15 +535,31 @@ export const VEHICLES: Vehicle[] = [
     { id: "bmw3-15-320d",    label: "320d 184 hp Otomatik",  fuelType: "diesel",   consumption: 5.5 },
   ]},
 
-  // 5 Serisi
+  // 5 Serisi — 2018–2025
+  { make: "BMW", model: "5 Serisi", year: 2025, variants: [
+    { id: "bmw5-25-520i",    label: "520i 208 hp Otomatik",  fuelType: "gasoline", consumption: 6.8 },
+    { id: "bmw5-25-530i",    label: "530i 252 hp Otomatik",  fuelType: "gasoline", consumption: 7.5 },
+    { id: "bmw5-25-520d",    label: "520d 197 hp Otomatik",  fuelType: "diesel",   consumption: 5.1 },
+    { id: "bmw5-25-530e",    label: "530e Plug-in Hybrid",   fuelType: "hybrid",   consumption: 2.0 },
+  ]},
   { make: "BMW", model: "5 Serisi", year: 2024, variants: [
     { id: "bmw5-24-520i",    label: "520i 184 hp Otomatik",  fuelType: "gasoline", consumption: 7.0 },
     { id: "bmw5-24-530i",    label: "530i 252 hp Otomatik",  fuelType: "gasoline", consumption: 7.8 },
     { id: "bmw5-24-520d",    label: "520d 197 hp Otomatik",  fuelType: "diesel",   consumption: 5.3 },
   ]},
+  { make: "BMW", model: "5 Serisi", year: 2023, variants: [
+    { id: "bmw5-23-520i",    label: "520i 184 hp Otomatik",  fuelType: "gasoline", consumption: 7.1 },
+    { id: "bmw5-23-520d",    label: "520d 190 hp Otomatik",  fuelType: "diesel",   consumption: 5.4 },
+    { id: "bmw5-23-530e",    label: "530e Plug-in Hybrid",   fuelType: "hybrid",   consumption: 2.2 },
+  ]},
   { make: "BMW", model: "5 Serisi", year: 2022, variants: [
     { id: "bmw5-22-520i",    label: "520i 184 hp Otomatik",  fuelType: "gasoline", consumption: 7.2 },
     { id: "bmw5-22-520d",    label: "520d 190 hp Otomatik",  fuelType: "diesel",   consumption: 5.5 },
+  ]},
+  { make: "BMW", model: "5 Serisi", year: 2021, variants: [
+    { id: "bmw5-21-520i",    label: "520i 184 hp Otomatik",  fuelType: "gasoline", consumption: 7.3 },
+    { id: "bmw5-21-520d",    label: "520d 190 hp Otomatik",  fuelType: "diesel",   consumption: 5.5 },
+    { id: "bmw5-21-530e",    label: "530e Plug-in Hybrid",   fuelType: "hybrid",   consumption: 2.3 },
   ]},
   { make: "BMW", model: "5 Serisi", year: 2020, variants: [
     { id: "bmw5-20-520i",    label: "520i 184 hp Otomatik",  fuelType: "gasoline", consumption: 7.4 },
@@ -410,12 +570,75 @@ export const VEHICLES: Vehicle[] = [
     { id: "bmw5-18-520d",    label: "520d 190 hp Otomatik",  fuelType: "diesel",   consumption: 5.7 },
   ]},
 
-  // iX3
+  // iX3 — 2021–2025
+  { make: "BMW", model: "iX3", year: 2025, variants: [
+    { id: "bmwix3-25",       label: "80 kWh M Sport",        fuelType: "electric", consumption: 17.3 },
+  ]},
   { make: "BMW", model: "iX3", year: 2024, variants: [
     { id: "bmwix3-24",       label: "80 kWh M Sport",        fuelType: "electric", consumption: 17.8 },
   ]},
+  { make: "BMW", model: "iX3", year: 2023, variants: [
+    { id: "bmwix3-23",       label: "80 kWh M Sport",        fuelType: "electric", consumption: 18.0 },
+  ]},
   { make: "BMW", model: "iX3", year: 2022, variants: [
     { id: "bmwix3-22",       label: "80 kWh M Sport",        fuelType: "electric", consumption: 18.5 },
+  ]},
+  { make: "BMW", model: "iX3", year: 2021, variants: [
+    { id: "bmwix3-21",       label: "80 kWh M Sport",        fuelType: "electric", consumption: 19.0 },
+  ]},
+
+  // X1 — 2020–2025
+  { make: "BMW", model: "X1", year: 2025, variants: [
+    { id: "bmwx1-25-18i",    label: "xDrive18i 136 hp",      fuelType: "gasoline", consumption: 7.0 },
+    { id: "bmwx1-25-20i",    label: "xDrive20i 204 hp",      fuelType: "gasoline", consumption: 7.5 },
+    { id: "bmwx1-25-18d",    label: "xDrive18d 150 hp",      fuelType: "diesel",   consumption: 5.2 },
+    { id: "bmwx1-25-30e",    label: "xDrive30e Plug-in Hybrid",fuelType: "hybrid", consumption: 1.8 },
+  ]},
+  { make: "BMW", model: "X1", year: 2024, variants: [
+    { id: "bmwx1-24-18i",    label: "xDrive18i 136 hp",      fuelType: "gasoline", consumption: 7.1 },
+    { id: "bmwx1-24-20i",    label: "xDrive20i 204 hp",      fuelType: "gasoline", consumption: 7.6 },
+    { id: "bmwx1-24-18d",    label: "xDrive18d 150 hp",      fuelType: "diesel",   consumption: 5.3 },
+    { id: "bmwx1-24-30e",    label: "xDrive30e Plug-in Hybrid",fuelType: "hybrid", consumption: 1.9 },
+  ]},
+  { make: "BMW", model: "X1", year: 2023, variants: [
+    { id: "bmwx1-23-18i",    label: "sDrive18i 136 hp",      fuelType: "gasoline", consumption: 7.2 },
+    { id: "bmwx1-23-23i",    label: "xDrive23i 218 hp",      fuelType: "gasoline", consumption: 7.8 },
+    { id: "bmwx1-23-18d",    label: "sDrive18d 150 hp",      fuelType: "diesel",   consumption: 5.4 },
+    { id: "bmwx1-23-30e",    label: "xDrive30e Plug-in Hybrid",fuelType: "hybrid", consumption: 2.0 },
+  ]},
+  { make: "BMW", model: "X1", year: 2022, variants: [
+    { id: "bmwx1-22-18i",    label: "sDrive18i 136 hp",      fuelType: "gasoline", consumption: 7.4 },
+    { id: "bmwx1-22-23i",    label: "xDrive23i 218 hp",      fuelType: "gasoline", consumption: 7.9 },
+    { id: "bmwx1-22-18d",    label: "sDrive18d 150 hp",      fuelType: "diesel",   consumption: 5.5 },
+  ]},
+  { make: "BMW", model: "X1", year: 2021, variants: [
+    { id: "bmwx1-21-18i",    label: "sDrive18i 140 hp",      fuelType: "gasoline", consumption: 7.5 },
+    { id: "bmwx1-21-20i",    label: "xDrive20i 192 hp",      fuelType: "gasoline", consumption: 8.0 },
+    { id: "bmwx1-21-18d",    label: "sDrive18d 150 hp",      fuelType: "diesel",   consumption: 5.6 },
+  ]},
+  { make: "BMW", model: "X1", year: 2020, variants: [
+    { id: "bmwx1-20-18i",    label: "sDrive18i 140 hp",      fuelType: "gasoline", consumption: 7.6 },
+    { id: "bmwx1-20-20i",    label: "xDrive20i 192 hp",      fuelType: "gasoline", consumption: 8.1 },
+    { id: "bmwx1-20-18d",    label: "sDrive18d 150 hp",      fuelType: "diesel",   consumption: 5.7 },
+  ]},
+
+  // i4 — 2022–2025
+  { make: "BMW", model: "i4", year: 2025, variants: [
+    { id: "bmwi4-25-edrive40",label: "eDrive40 340 hp",      fuelType: "electric", consumption: 16.0 },
+    { id: "bmwi4-25-m50",     label: "M50 544 hp",           fuelType: "electric", consumption: 18.5 },
+  ]},
+  { make: "BMW", model: "i4", year: 2024, variants: [
+    { id: "bmwi4-24-edrive35",label: "eDrive35 286 hp",      fuelType: "electric", consumption: 15.8 },
+    { id: "bmwi4-24-edrive40",label: "eDrive40 340 hp",      fuelType: "electric", consumption: 16.3 },
+    { id: "bmwi4-24-m50",     label: "M50 544 hp",           fuelType: "electric", consumption: 18.8 },
+  ]},
+  { make: "BMW", model: "i4", year: 2023, variants: [
+    { id: "bmwi4-23-edrive40",label: "eDrive40 340 hp",      fuelType: "electric", consumption: 16.5 },
+    { id: "bmwi4-23-m50",     label: "M50 544 hp",           fuelType: "electric", consumption: 19.0 },
+  ]},
+  { make: "BMW", model: "i4", year: 2022, variants: [
+    { id: "bmwi4-22-edrive40",label: "eDrive40 340 hp",      fuelType: "electric", consumption: 16.8 },
+    { id: "bmwi4-22-m50",     label: "M50 544 hp",           fuelType: "electric", consumption: 19.5 },
   ]},
 
   // ── MERCEDES ────────────────────────────────────────────────────────────
