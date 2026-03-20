@@ -29,6 +29,10 @@ export async function GET(request: NextRequest) {
   }
 
   let predictions: Array<{ placeId: string; description: string; mainText: string; secondaryText: string }> = [];
+  let newApiRaw: unknown = null;
+  let legacyApiRaw: unknown = null;
+  let newApiErrorText: string | null = null;
+  let legacyApiErrorText: string | null = null;
   try {
     const newApiRes = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
       method: "POST",
@@ -59,6 +63,7 @@ export async function GET(request: NextRequest) {
           };
         }>;
       };
+      newApiRaw = newData;
       predictions = (newData.suggestions ?? [])
         .map((s) => s.placePrediction)
         .filter((p): p is NonNullable<typeof p> => Boolean(p?.placeId))
@@ -70,6 +75,7 @@ export async function GET(request: NextRequest) {
         }));
     } else {
       const newApiError = await newApiRes.text();
+      newApiErrorText = newApiError;
       console.warn("[places/autocomplete] New API failed, falling back to legacy", newApiRes.status, newApiError);
 
       const legacyUrl = new URL("https://maps.googleapis.com/maps/api/place/autocomplete/json");
@@ -94,8 +100,10 @@ export async function GET(request: NextRequest) {
           structured_formatting?: { main_text?: string; secondary_text?: string };
         }>;
       };
+      legacyApiRaw = legacyData;
       const apiStatus = legacyData.status ?? "UNKNOWN_ERROR";
       if (apiStatus !== "OK" && apiStatus !== "ZERO_RESULTS") {
+        legacyApiErrorText = legacyData.error_message ?? null;
         console.error("[places/autocomplete] legacy API status", apiStatus, legacyData.error_message ?? "");
         return NextResponse.json({ error: "Konum önerileri alınamadı" }, { status: 502 });
       }
@@ -110,6 +118,16 @@ export async function GET(request: NextRequest) {
   } catch (err) {
     console.error("[places/autocomplete] fetch failed:", err);
     return NextResponse.json({ error: "Places API erişilemedi" }, { status: 502 });
+  }
+
+  if (predictions.length === 0) {
+    console.warn("[places/autocomplete] empty predictions", {
+      input,
+      newApiErrorText,
+      legacyApiErrorText,
+      newApiRaw,
+      legacyApiRaw,
+    });
   }
 
   return NextResponse.json({ predictions }, {
