@@ -1,59 +1,79 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  getPricesForCity,
   validateFuelPrices,
   TURKEY_AVERAGE,
   FUEL_PRODUCT_MAP,
 } from "@/data/fuelPrices";
+import { fetchFuelPrices } from "@/lib/fetchFuelPrices";
+import type { FuelPrices } from "@/types";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const city = searchParams.get("city") ?? "";
+  const city = searchParams.get("city")?.trim() ?? "";
 
-  if (!city.trim()) {
-    // No city provided — return Turkey average
-    const updatedAt = new Date().toISOString();
+  // ── 1. Attempt live fetch (with in-memory 15-min cache) ─────────────────
+  const live = await fetchFuelPrices();
 
-    console.log("[fuel/route] No city provided — using Turkey average", {
-      sourceCity:     "turkey_average",
-      sourceType:     "static_average",
-      parsedGasoline: TURKEY_AVERAGE.gasoline,
-      parsedDiesel:   TURKEY_AVERAGE.diesel,
-      parsedLPG:      TURKEY_AVERAGE.lpg,
+  if (live) {
+    const prices: FuelPrices = {
+      city:      city || "Türkiye",
+      updatedAt: live.fetchedAt,
+      gasoline:  live.gasoline,
+      diesel:    live.diesel,
+      lpg:       live.lpg,
+      // Opet doesn't publish EV charging prices; keep a reference value
+      electric:  live.electric ?? TURKEY_AVERAGE.electric,
+      isFallback: false,
+      source:    live.source,
+    };
+
+    console.log("[fuel/route] Live price lookup", {
+      city:           prices.city,
+      parsedGasoline: prices.gasoline,
+      parsedDiesel:   prices.diesel,
+      parsedLPG:      prices.lpg,
+      source:         prices.source,
+      fetchedAt:      prices.updatedAt,
       productMap:     FUEL_PRODUCT_MAP,
-      updatedAt,
     });
 
-    return NextResponse.json({
-      ...TURKEY_AVERAGE,
-      city:       "Türkiye",
-      updatedAt,
-      isFallback: true,
-    });
+    // Validate plausibility + diesel > gasoline invariant
+    if (!validateFuelPrices(prices)) {
+      console.error(
+        "[fuel/route] Live prices failed validation — falling back to static",
+        { gasoline: prices.gasoline, diesel: prices.diesel, lpg: prices.lpg }
+      );
+      return staticFallback(city);
+    }
+
+    return NextResponse.json(prices);
   }
 
-  const { prices, debug } = getPricesForCity(city);
+  // ── 2. Live fetch unavailable — use static reference prices ──────────────
+  console.warn("[fuel/route] Live data unavailable — using static fallback");
+  return staticFallback(city);
+}
 
-  // Log the full diagnostic trace on the server
-  console.log("[fuel/route] Price lookup", {
-    selectedCity:   debug.selectedCity,
-    sourceCity:     debug.sourceCity,
-    sourceType:     debug.sourceType,
-    parsedGasoline: debug.parsedGasoline,
-    parsedDiesel:   debug.parsedDiesel,
-    parsedLPG:      debug.parsedLPG,
+// ── Static fallback ───────────────────────────────────────────────────────────
+
+function staticFallback(city: string): NextResponse {
+  const updatedAt = new Date().toISOString();
+  const prices: FuelPrices = {
+    ...TURKEY_AVERAGE,
+    city:      city || "Türkiye",
+    updatedAt,
+    isFallback: true,
+    source:    "Statik referans verisi (Mart 2026)",
+  };
+
+  console.log("[fuel/route] Static fallback", {
+    city:           prices.city,
+    parsedGasoline: TURKEY_AVERAGE.gasoline,
+    parsedDiesel:   TURKEY_AVERAGE.diesel,
+    parsedLPG:      TURKEY_AVERAGE.lpg,
     productMap:     FUEL_PRODUCT_MAP,
-    updatedAt:      debug.updatedAt,
+    updatedAt,
   });
-
-  // Validate: reject prices that fail range checks or the diesel > gasoline invariant
-  if (!validateFuelPrices(prices)) {
-    console.error("[fuel/route] Price validation failed — rejecting", prices);
-    return NextResponse.json(
-      { error: "Geçersiz yakıt fiyatı verisi" },
-      { status: 422 }
-    );
-  }
 
   return NextResponse.json(prices);
 }

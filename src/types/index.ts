@@ -24,6 +24,7 @@ export interface FuelPrices {
   lpg: number;
   electric: number; // TL per kWh
   isFallback: boolean;
+  source?: string;  // e.g. "Opet İstanbul Avrupa"
 }
 
 export type TripMode = "duration" | "speed" | "manual";
