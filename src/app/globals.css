@@ -156,6 +156,19 @@ select.input-base option {
   animation: pulseGlow 3s ease-in-out infinite;
 }
 
+@keyframes spinRoute {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.route-spinner {
+  animation: spinRoute 0.9s linear infinite;
+}
+
 /* Label */
 .label {
   font-size: 12px;

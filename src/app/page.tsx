@@ -1,16 +1,18 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import type { VehicleVariant, TripMode, CalculationResult } from "@/types";
 import { calculate } from "@/lib/calculator";
 import { useLocation } from "@/hooks/useLocation";
 import VehicleSelector from "@/components/VehicleSelector";
 import ManualConsumptionInput from "@/components/ManualConsumptionInput";
 import TripInputs from "@/components/TripInputs";
+import RouteInput, { type RouteInfo } from "@/components/RouteInput";
 import ResultCard from "@/components/ResultCard";
 import FuelPriceBadge from "@/components/FuelPriceBadge";
 
 type VehicleInputMode = "select" | "manual";
+type TripInputMode = "distance" | "route";
 
 export default function HomePage() {
   // Vehicle input mode toggle
@@ -26,23 +28,28 @@ export default function HomePage() {
   const variant = vehicleInputMode === "select" ? selectedVariant : manualVariant;
 
   // Trip
+  const [tripInputMode, setTripInputMode] = useState<TripInputMode>("distance");
   const [distance, setDistance] = useState("");
   const [mode, setMode] = useState<TripMode>("speed");
   const [durationHours, setDurationHours] = useState("");
   const [durationMinutes, setDurationMinutes] = useState("");
   const [avgSpeed, setAvgSpeed] = useState("90");
   const [peopleCount, setPeopleCount] = useState("1");
+  const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
 
   // Location + fuel
   const { fuelPrices, loading, error, retry } = useLocation();
 
   // Effective trip mode — manual vehicle input uses "manual" to skip speed adjustment
   const effectiveMode = vehicleInputMode === "manual" ? "manual" : mode;
+  const routeDistance = routeInfo?.distanceKm;
+  const activeDistance =
+    tripInputMode === "route" ? (routeDistance ? String(routeDistance) : "") : distance;
 
   // Reactive calculation
   const result = useMemo<CalculationResult | null>(() => {
     if (!variant || !fuelPrices) return null;
-    const dist = parseFloat(distance);
+    const dist = parseFloat(activeDistance);
     if (!dist || dist <= 0) return null;
 
     if (effectiveMode === "manual") {
@@ -54,28 +61,43 @@ export default function HomePage() {
     }
 
     const totalMinutes =
-      effectiveMode === "duration"
-        ? (parseFloat(durationHours) || 0) * 60 + (parseFloat(durationMinutes) || 0)
-        : undefined;
+      tripInputMode === "route"
+        ? (routeInfo?.durationMinutes ?? undefined)
+        : effectiveMode === "duration"
+          ? (parseFloat(durationHours) || 0) * 60 + (parseFloat(durationMinutes) || 0)
+          : undefined;
 
     const speed =
       effectiveMode === "speed" ? parseFloat(avgSpeed) || undefined : undefined;
 
-    if (effectiveMode === "duration" && (!totalMinutes || totalMinutes <= 0)) return null;
+    if ((tripInputMode === "route" || effectiveMode === "duration") && (!totalMinutes || totalMinutes <= 0)) {
+      return null;
+    }
     if (effectiveMode === "speed" && (!speed || speed <= 0)) return null;
 
     return calculate(
       variant,
       {
         distance: dist,
-        mode: effectiveMode,
+        mode: tripInputMode === "route" ? "duration" : effectiveMode,
         duration: totalMinutes,
         avgSpeed: speed,
         peopleCount: parseInt(peopleCount) || 1,
       },
       fuelPrices
     );
-  }, [variant, fuelPrices, distance, effectiveMode, durationHours, durationMinutes, avgSpeed, peopleCount]);
+  }, [
+    variant,
+    fuelPrices,
+    activeDistance,
+    effectiveMode,
+    durationHours,
+    durationMinutes,
+    avgSpeed,
+    peopleCount,
+    tripInputMode,
+    routeInfo?.durationMinutes,
+  ]);
 
   // Switch modes — reset the variant for the inactive mode
   const handleModeSwitch = (next: VehicleInputMode) => {
@@ -257,21 +279,34 @@ export default function HomePage() {
             }
             title="Yolculuk Bilgileri"
           />
-          <TripInputs
-            distance={distance}
-            mode={effectiveMode}
-            durationHours={durationHours}
-            durationMinutes={durationMinutes}
-            avgSpeed={avgSpeed}
-            peopleCount={peopleCount}
-            simplified={vehicleInputMode === "manual"}
-            onDistanceChange={setDistance}
-            onModeChange={setMode}
-            onDurationHoursChange={setDurationHours}
-            onDurationMinutesChange={setDurationMinutes}
-            onAvgSpeedChange={setAvgSpeed}
-            onPeopleCountChange={setPeopleCount}
-          />
+          <div className="mb-4 mt-2">
+            <TripInputModeToggle value={tripInputMode} onChange={setTripInputMode} />
+          </div>
+          {tripInputMode === "distance" ? (
+            <TripInputs
+              distance={distance}
+              mode={effectiveMode}
+              durationHours={durationHours}
+              durationMinutes={durationMinutes}
+              avgSpeed={avgSpeed}
+              peopleCount={peopleCount}
+              simplified={vehicleInputMode === "manual"}
+              onDistanceChange={setDistance}
+              onModeChange={setMode}
+              onDurationHoursChange={setDurationHours}
+              onDurationMinutesChange={setDurationMinutes}
+              onAvgSpeedChange={setAvgSpeed}
+              onPeopleCountChange={setPeopleCount}
+            />
+          ) : (
+            <div className="fade-in">
+              <RouteInput
+                peopleCount={peopleCount}
+                onPeopleCountChange={setPeopleCount}
+                onRouteChange={setRouteInfo}
+              />
+            </div>
+          )}
         </div>
 
         {/* Result card */}
@@ -331,7 +366,7 @@ function SectionHeader({
   icon,
   title,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
 }) {
   return (
@@ -395,6 +430,34 @@ function VehicleInputModeToggle({
           </button>
         );
       })}
+    </div>
+  );
+}
+
+function TripInputModeToggle({
+  value,
+  onChange,
+}: {
+  value: TripInputMode;
+  onChange: (v: TripInputMode) => void;
+}) {
+  return (
+    <div className="toggle-pill">
+      {(
+        [
+          { key: "distance", label: "Mesafe Gir" },
+          { key: "route", label: "Yolculuk Gir" },
+        ] as { key: TripInputMode; label: string }[]
+      ).map(({ key, label }) => (
+        <button
+          key={key}
+          type="button"
+          className={value === key ? "active" : ""}
+          onClick={() => onChange(key)}
+        >
+          {label}
+        </button>
+      ))}
     </div>
   );
 }
