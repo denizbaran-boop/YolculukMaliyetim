@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
     city:       requestedCity || "Türkiye",
     updatedAt,
     isFallback: true,
-    source:     "Statik referans (Mart 2026) — canlı veri alınamadı",
+    source:     "Statik referans (Mart 2026, Petrol Ofisi) — canlı veri alınamadı",
   };
 
   return NextResponse.json({

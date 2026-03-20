@@ -2,11 +2,12 @@ import type { FuelPrices } from "@/types";
 
 /**
  * Static reference fuel prices for Turkey — used ONLY as a fallback when the
- * live Opet fetch fails AND no cached live data exists.
+ * live scrape-petrol fetch fails AND no cached live data exists.
  *
- * Source basis: OPET pump prices observed ~March 2026.
- *   Benzin 95: ~62.02 ₺/L
- *   Motorin:   ~65.94 ₺/L
+ * Source basis: Petrol Ofisi pump prices observed ~March 2026.
+ *   Benzin 95: ~62.50 ₺/L (national average)
+ *   Motorin:   ~71.50 ₺/L (national average)
+ *   LPG:       ~30.50 ₺/L (national average, major brands)
  *
  * ⚠ KEY RULE: In Turkey, diesel (motorin) is MORE EXPENSIVE than gasoline.
  *   diesel > gasoline is a required invariant. If violated, the data is wrong.
@@ -14,7 +15,7 @@ import type { FuelPrices } from "@/types";
  * Validation thresholds (reject values below these):
  *   diesel    ≥ 60 TL/L
  *   gasoline  ≥ 55 TL/L
- *   lpg       ≥ 25 TL/L
+ *   lpg       ≥ 20 TL/L
  *   electric  ≥  5 TL/kWh
  */
 
@@ -28,9 +29,9 @@ export const FUEL_PRODUCT_MAP = {
 
 /** Turkey national reference average — static fallback ONLY */
 export const TURKEY_AVERAGE: Omit<FuelPrices, "city" | "updatedAt" | "isFallback" | "source"> = {
-  gasoline: 62.08,
-  diesel:   65.98,
-  lpg:      32.15,
+  gasoline: 62.50,
+  diesel:   71.50,
+  lpg:      30.50,
   electric: 8.85,
 };
 
@@ -44,7 +45,7 @@ export function validateFuelPrice(
   switch (type) {
     case "diesel":   return value >= 60;  // motorin is pricier
     case "gasoline": return value >= 55;
-    case "lpg":      return value >= 25;
+    case "lpg":      return value >= 20;
     case "electric": return value >= 5;
     default:         return true;
   }

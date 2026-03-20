@@ -1,67 +1,69 @@
 /**
  * fetchFuelPrices.ts
  *
- * Fetches live fuel prices from Opet's internal JSON API:
- *   https://api.opet.com.tr/api/fuelprices/allprices
+ * Fetches live fuel prices from scrape-petrol.vercel.app which scrapes
+ * Petrol Ofisi's official price bulletins — all 82 Turkish provinces.
  *
- * Discovered from inspecting FuelPrice.js (the React component served at
- * opet.com.tr/akaryakit-fiyatlari). The page is a client-rendered SPA —
- * HTML scraping yields nothing. This JSON endpoint is what the component
- * actually calls; it returns structured data for all 81 Turkish provinces,
- * no auth required.
+ * ── Endpoints ────────────────────────────────────────────────────────────────
+ *   /scrape           — Province-level Petrol Ofisi prices (benzin 95, motorin)
+ *   /scrape/akaryakit — Brand-level prices (used for LPG national average)
  *
- * ── Products ─────────────────────────────────────────────────────────────────
- *   A100  "Kurşunsuz Benzin 95"  ← gasoline
- *   A121  "Motorin UltraForce"   ← diesel (preferred)
- *   A128  "Motorin EcoForce"     ← diesel (fallback)
- *   NOTE: LPG / Otogaz is NOT in Opet's API. We use a static reference value.
+ * ── Province name format ─────────────────────────────────────────────────────
+ *   Province names are uppercase ASCII approximations: "ISTANBUL (AVRUPA)",
+ *   "ANKARA", "IZMIR", "CANAKKALE" etc. normalizeTurkish() handles matching
+ *   from user-supplied Turkish city names to these ASCII forms.
  *
- * ── Geo-restriction note ──────────────────────────────────────────────────────
- *   api.opet.com.tr appears to block non-Turkish IP ranges (Vercel US servers).
- *   The route is deployed with `runtime = 'edge'` so it runs at the Cloudflare
- *   PoP closest to the user (Istanbul for Turkish users), and with
- *   `preferredRegion = 'fra1'` as the Node.js fallback (Frankfurt, Europe).
+ * ── LPG ──────────────────────────────────────────────────────────────────────
+ *   Province data has poGazOtogaz in TL/KG (not litre) — unusable directly.
+ *   Instead we derive LPG from brand-level data (/scrape/akaryakit), filtering
+ *   to brands with dates within the last 7 days and averaging their TL/L prices.
  *
  * ── Caching ──────────────────────────────────────────────────────────────────
- *   Edge Runtime does not support module-level persistent state, so we cannot
- *   use an in-memory cache. Instead we use `fetch` with `next: { revalidate }`
- *   which hooks into Next.js's Data Cache (persists across invocations in
- *   Node.js runtime; in Edge Runtime the CDN Cache-Control header handles it).
+ *   `fetch` with `next: { revalidate }` hooks into Next.js Data Cache.
+ *   CDN Cache-Control is set in route.ts (s-maxage=900).
  */
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ALL_PRICES_URL  = "https://api.opet.com.tr/api/fuelprices/allprices";
-const LAST_UPDATE_URL = "https://api.opet.com.tr/api/fuelprices/lastupdate";
-const SOURCE_LABEL    = "Opet (api.opet.com.tr)";
+const SCRAPE_PROVINCES_URL = "https://scrape-petrol.vercel.app/scrape";
+const SCRAPE_BRANDS_URL    = "https://scrape-petrol.vercel.app/scrape/akaryakit";
+const SOURCE_LABEL         = "Petrol Ofisi (scrape-petrol.vercel.app)";
 
-/** LPG is not in Opet's API — static reference (EPDK max price band, March 2026) */
-const LPG_STATIC_REF  = 32.15;
-const LPG_SOURCE_NOTE = "Statik referans (LPG Opet API'sinde yok)";
+/** LPG fallback if brand-level data is unavailable (EPDK ref, March 2026) */
+const LPG_STATIC_REF  = 30.50;
+const LPG_SOURCE_NOTE = "Statik referans (LPG canlı veriden türetildi)";
 
-/** Revalidate interval for Next.js Data Cache / CDN — 15 minutes */
+/** Revalidate interval for Next.js Data Cache — 15 minutes */
 const REVALIDATE_SECS = 900;
+
+/** Max age for brand-level data to be considered "current" (7 days) */
+const MAX_AGE_DAYS = 7;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface OpetPriceEntry {
-  id: string;
-  productName:      string;
-  productShortName: string;
-  amount:           number;
-  productCode:      string;
+interface ScrapedPriceField {
+  withTax:    string;
+  withoutTax: string;
+  currency:   string;
 }
 
-interface OpetProvinceEntry {
-  provinceCode: number;
-  provinceName: string;
-  districtCode: string;
-  districtName: string;
-  prices:       OpetPriceEntry[];
+interface ScrapedProvince {
+  name:           string; // "ISTANBUL (AVRUPA)", "ANKARA", ...
+  vMaxKursunsuz?: ScrapedPriceField; // Benzin 95, TL/LT
+  vMaxDiesel?:    ScrapedPriceField; // Motorin, TL/LT
+  vProDiesel?:    ScrapedPriceField; // Premium motorin, TL/LT
+  poGazOtogaz?:   ScrapedPriceField; // LPG — TL/KG (not usable as TL/L directly)
+}
+
+interface ScrapedBrand {
+  name:    string;
+  benzin:  string; // "₺62,00" or "-"
+  motorin: string; // "₺71,10" or "-"
+  lpg:     string; // "₺30,49" or "-" (TL per LITRE)
+  tarih:   string; // "20.03.2026"
 }
 
 interface ProvincePrices {
-  provinceCode:         number;
   provinceName:         string;
   gasoline:             number;
   diesel:               number;
@@ -94,16 +96,22 @@ export interface LiveFuelData {
  * Throws on network failure so the caller can build a meaningful fallbackReason.
  */
 export async function fetchFuelPricesForCity(city: string): Promise<LiveFuelData> {
-  const { provinces, opetLastUpdate } = await loadProvinces();
+  const { provinces, lpgNationalAvg, lpgIsLive, lastUpdate } = await loadData();
   const fetchedAt = new Date().toISOString();
+
+  const lpg       = lpgNationalAvg;
+  const lpgIsStatic = !lpgIsLive;
+  const lpgSource = lpgIsLive
+    ? "Petrol Ofisi / marka ortalaması (scrape-petrol.vercel.app)"
+    : LPG_SOURCE_NOTE;
 
   if (!city.trim()) {
     const avg = nationalAverage(provinces);
     return {
       ...avg,
-      lpg: LPG_STATIC_REF, lpgIsStatic: true, electric: null,
-      source: SOURCE_LABEL, lpgSource: LPG_SOURCE_NOTE,
-      fetchedAt, opetLastUpdate,
+      lpg, lpgIsStatic, electric: null,
+      source: SOURCE_LABEL, lpgSource,
+      fetchedAt, opetLastUpdate: lastUpdate,
       matchedProvince: "Türkiye (ulusal ortalama)",
       isNationalAverage: true,
     };
@@ -115,9 +123,9 @@ export async function fetchFuelPricesForCity(city: string): Promise<LiveFuelData
     return {
       gasoline: match.gasoline,
       diesel:   match.diesel,
-      lpg: LPG_STATIC_REF, lpgIsStatic: true, electric: null,
-      source: SOURCE_LABEL, lpgSource: LPG_SOURCE_NOTE,
-      fetchedAt, opetLastUpdate,
+      lpg, lpgIsStatic, electric: null,
+      source: SOURCE_LABEL, lpgSource,
+      fetchedAt, opetLastUpdate: lastUpdate,
       matchedProvince:      match.provinceName,
       matchedGasolineLabel: match.matchedGasolineLabel,
       matchedDieselLabel:   match.matchedDieselLabel,
@@ -129,9 +137,9 @@ export async function fetchFuelPricesForCity(city: string): Promise<LiveFuelData
   const avg = nationalAverage(provinces);
   return {
     ...avg,
-    lpg: LPG_STATIC_REF, lpgIsStatic: true, electric: null,
-    source: SOURCE_LABEL, lpgSource: LPG_SOURCE_NOTE,
-    fetchedAt, opetLastUpdate,
+    lpg, lpgIsStatic, electric: null,
+    source: SOURCE_LABEL, lpgSource,
+    fetchedAt, opetLastUpdate: lastUpdate,
     matchedProvince: `Türkiye (ulusal ortalama — "${city}" il eşleşmedi)`,
     isNationalAverage: true,
   };
@@ -139,21 +147,16 @@ export async function fetchFuelPricesForCity(city: string): Promise<LiveFuelData
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 
-async function loadProvinces(): Promise<{ provinces: ProvincePrices[]; opetLastUpdate: string }> {
-  // next: { revalidate } hooks into Next.js Data Cache for Node.js runtime.
-  // For Edge Runtime the response Cache-Control header handles CDN caching.
-  // X-Forwarded-For: Opet's ADC (NetScaler) load-balancer performs geo-IP
-  // filtering. When the real client IP is a cloud-provider address it hangs the
-  // connection. Many NetScaler configs consult the X-Forwarded-For header for
-  // the "original" client IP, so forwarding a Turkish ISP address bypasses the
-  // block. We use a Türk Telekom backbone address (195.175.0.1) — this is a
-  // public anycast address, not a specific subscriber.
+async function loadData(): Promise<{
+  provinces:     ProvincePrices[];
+  lpgNationalAvg: number;
+  lpgIsLive:     boolean;
+  lastUpdate:    string;
+}> {
   const fetchOpts: RequestInit = {
     headers: {
       Accept:            "application/json, */*",
       "Accept-Language": "tr-TR,tr;q=0.9",
-      "X-Forwarded-For": "195.175.0.1",
-      "X-Real-IP":       "195.175.0.1",
     },
     // next is a Next.js-specific fetch extension for the Data Cache
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -161,38 +164,53 @@ async function loadProvinces(): Promise<{ provinces: ProvincePrices[]; opetLastU
   };
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 9_000);
+  const timeout = setTimeout(() => controller.abort(), 10_000);
 
   try {
-    const [pricesRes, updateRes] = await Promise.all([
-      fetch(ALL_PRICES_URL,  { ...fetchOpts, signal: controller.signal }),
-      fetch(LAST_UPDATE_URL, { ...fetchOpts, signal: controller.signal }),
+    const [provincesRes, brandsRes] = await Promise.all([
+      fetch(SCRAPE_PROVINCES_URL, { ...fetchOpts, signal: controller.signal }),
+      fetch(SCRAPE_BRANDS_URL,    { ...fetchOpts, signal: controller.signal }),
     ]);
 
     clearTimeout(timeout);
 
-    if (!pricesRes.ok) {
-      throw new Error(`HTTP ${pricesRes.status} from ${ALL_PRICES_URL}`);
+    if (!provincesRes.ok) {
+      throw new Error(`HTTP ${provincesRes.status} from ${SCRAPE_PROVINCES_URL}`);
     }
 
-    const rawData: OpetProvinceEntry[] = await pricesRes.json();
-    let opetLastUpdate = "";
-    if (updateRes.ok) {
-      const upd = await updateRes.json() as { lastUpdateDate?: string };
-      opetLastUpdate = upd.lastUpdateDate ?? "";
+    const provinceData = await provincesRes.json() as { results: ScrapedProvince[] };
+    const provinces = (provinceData.results ?? [])
+      .map(parseProvince)
+      .filter((p): p is ProvincePrices => p !== null);
+
+    if (!provinces.length) {
+      throw new Error("Province list empty after parsing");
+    }
+
+    // LPG from brand-level data
+    let lpgNationalAvg = LPG_STATIC_REF;
+    let lpgIsLive = false;
+    let lastUpdate = "";
+
+    if (brandsRes.ok) {
+      const brandData = await brandsRes.json() as { results: ScrapedBrand[] };
+      const brands = brandData.results ?? [];
+      const { lpg, date } = extractLpgFromBrands(brands);
+      if (lpg !== null) {
+        lpgNationalAvg = lpg;
+        lpgIsLive = true;
+      }
+      lastUpdate = date;
     }
 
     console.log(
-      "[fetchFuelPrices] OK — entries:", rawData.length,
-      "| lastUpdate:", opetLastUpdate,
-      "| sample:", JSON.stringify(rawData[0]?.prices?.find(p => p.productCode === "A100"))
+      "[fetchFuelPrices] OK — provinces:", provinces.length,
+      "| lpg:", lpgNationalAvg, "(live:", lpgIsLive + ")",
+      "| lastUpdate:", lastUpdate,
+      "| sample:", JSON.stringify(provinces[0]),
     );
 
-    const provinces = rawData
-      .map(parseEntry)
-      .filter((p): p is ProvincePrices => p !== null);
-
-    return { provinces, opetLastUpdate };
+    return { provinces, lpgNationalAvg, lpgIsLive, lastUpdate };
 
   } catch (err) {
     clearTimeout(timeout);
@@ -200,28 +218,67 @@ async function loadProvinces(): Promise<{ provinces: ProvincePrices[]; opetLastU
       ? `${err.name}: ${err.message}`
       : String(err);
     console.error("[fetchFuelPrices] FETCH FAILED:", msg);
-    // Re-throw so route.ts can set fallbackReason
-    throw new Error(`Opet API ulaşılamadı: ${msg}`);
+    throw new Error(`Yakıt verisi alınamadı: ${msg}`);
   }
 }
 
 // ── Parsing ───────────────────────────────────────────────────────────────────
 
-function parseEntry(entry: OpetProvinceEntry): ProvincePrices | null {
-  const gasEntry    = entry.prices.find(p => p.productCode === "A100");
-  const dieselEntry = entry.prices.find(p => p.productCode === "A121")
-                   ?? entry.prices.find(p => p.productCode === "A128");
-
-  if (!gasEntry || !dieselEntry) return null;
+function parseProvince(p: ScrapedProvince): ProvincePrices | null {
+  const gasoline = parseFloat(p.vMaxKursunsuz?.withTax ?? "");
+  const diesel   = parseFloat(p.vMaxDiesel?.withTax    ?? "");
+  if (isNaN(gasoline) || isNaN(diesel) || gasoline <= 0 || diesel <= 0) return null;
 
   return {
-    provinceCode: entry.provinceCode,
-    provinceName: entry.provinceName,
-    gasoline:     gasEntry.amount,
-    diesel:       dieselEntry.amount,
-    matchedGasolineLabel: gasEntry.productName,
-    matchedDieselLabel:   dieselEntry.productName,
+    provinceName:         p.name,
+    gasoline,
+    diesel,
+    matchedGasolineLabel: "Benzin 95 (Petrol Ofisi vMax Kurşunsuz)",
+    matchedDieselLabel:   "Motorin (Petrol Ofisi vMax Diesel)",
   };
+}
+
+/** Parse brand-level price string: "₺30,49" → 30.49; "-" → null */
+function parseBrandPrice(s: string): number | null {
+  if (!s || s === "-") return null;
+  const n = parseFloat(s.replace(/[₺\s]/g, "").replace(",", "."));
+  return isNaN(n) || n <= 0 ? null : n;
+}
+
+/** Parse "DD.MM.YYYY" date string used in brand data */
+function parseTrDate(s: string): Date {
+  const [d, m, y] = s.split(".");
+  return new Date(`${y}-${m}-${d}T00:00:00Z`);
+}
+
+/**
+ * Extract LPG national average (TL/L) from brand-level data.
+ * Filters to brands updated within the last MAX_AGE_DAYS days.
+ */
+function extractLpgFromBrands(brands: ScrapedBrand[]): { lpg: number | null; date: string } {
+  const now     = Date.now();
+  const maxAgeMs = MAX_AGE_DAYS * 24 * 60 * 60 * 1000;
+
+  const recentLpgPrices = brands
+    .filter(b => {
+      if (!b.tarih) return false;
+      const age = now - parseTrDate(b.tarih).getTime();
+      return age >= 0 && age <= maxAgeMs;
+    })
+    .map(b => parseBrandPrice(b.lpg))
+    .filter((v): v is number => v !== null && v >= 20 && v <= 60); // sanity range for LPG TL/L
+
+  const lpg = recentLpgPrices.length > 0
+    ? Math.round(recentLpgPrices.reduce((a, b) => a + b, 0) / recentLpgPrices.length * 100) / 100
+    : null;
+
+  // Most recent tarih across all brands
+  const lastUpdate = brands
+    .map(b => b.tarih ?? "")
+    .filter(Boolean)
+    .sort((a, z) => parseTrDate(z).getTime() - parseTrDate(a).getTime())[0] ?? "";
+
+  return { lpg, date: lastUpdate };
 }
 
 // ── City matching ─────────────────────────────────────────────────────────────
@@ -253,11 +310,12 @@ function nationalAverage(provinces: ProvincePrices[]): {
   matchedGasolineLabel: string; matchedDieselLabel: string;
 } {
   if (!provinces.length) throw new Error("Province list empty");
-  const avg = (vals: number[]) => Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 100) / 100;
+  const avg = (vals: number[]) =>
+    Math.round(vals.reduce((a, b) => a + b, 0) / vals.length * 100) / 100;
   return {
     gasoline: avg(provinces.map(p => p.gasoline)),
     diesel:   avg(provinces.map(p => p.diesel)),
-    matchedGasolineLabel: "Kurşunsuz Benzin 95 (ulusal ortalama)",
-    matchedDieselLabel:   "Motorin UltraForce (ulusal ortalama)",
+    matchedGasolineLabel: "Benzin 95 — ulusal ortalama (Petrol Ofisi)",
+    matchedDieselLabel:   "Motorin — ulusal ortalama (Petrol Ofisi)",
   };
 }
