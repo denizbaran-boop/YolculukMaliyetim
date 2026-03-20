@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState, useEffect, useRef, type CSSProperties } from "react";
 
 const AUTOCOMPLETE_DEBOUNCE_MS = 350;
@@ -554,61 +553,32 @@ function SuggestionDropdown({
 }
 
 function RouteResultBanner({ result }: { result: RouteInfo }) {
-  const mapSrc =
-    result.polyline
-      ? `/api/route/map?polyline=${encodeURIComponent(result.polyline)}`
-          + (result.origin ? `&originLat=${result.origin.lat}&originLng=${result.origin.lng}` : "")
-          + (result.destination ? `&destinationLat=${result.destination.lat}&destinationLng=${result.destination.lng}` : "")
-      : null;
-
   return (
-    <div className="fade-in flex flex-col gap-2">
-      <div
-        className="flex gap-0 rounded-xl overflow-hidden"
-        style={{ border: "1px solid rgba(168,85,247,0.25)", background: "rgba(124,58,237,0.1)" }}
-      >
-        {[
-          { label: "Mesafe", value: `${result.distanceKm} km` },
-          { label: "Süre", value: result.durationText },
-          { label: "Kaynak", value: "Google Maps" },
-        ].map(({ label, value }, i, arr) => (
-          <div
-            key={label}
-            className="flex-1 flex flex-col items-center gap-0.5 py-3"
-            style={{
-              borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.08)" : "none",
-            }}
-          >
-            <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{label}</span>
-            <span
-              className="text-sm font-bold"
-              style={{ color: i < 2 ? "#c084fc" : "var(--text-secondary)", fontSize: i === 2 ? "11px" : undefined }}
-            >
-              {value}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {mapSrc && (
+    <div
+      className="fade-in flex gap-0 rounded-xl overflow-hidden"
+      style={{ border: "1px solid rgba(168,85,247,0.25)", background: "rgba(124,58,237,0.1)" }}
+    >
+      {[
+        { label: "Mesafe", value: `${result.distanceKm} km` },
+        { label: "Süre", value: result.durationText },
+        { label: "Kaynak", value: "Google Maps" },
+      ].map(({ label, value }, i, arr) => (
         <div
-          className="rounded-xl overflow-hidden"
+          key={label}
+          className="flex-1 flex flex-col items-center gap-0.5 py-3"
           style={{
-            border: "1px solid rgba(168,85,247,0.25)",
-            background: "rgba(17,24,39,0.5)",
+            borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.08)" : "none",
           }}
         >
-          <Image
-            src={mapSrc}
-            alt="Güzergah harita önizlemesi"
-            width={960}
-            height={460}
-            unoptimized
-            className="block w-full h-[180px] object-cover"
-            loading="lazy"
-          />
+          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{label}</span>
+          <span
+            className="text-sm font-bold"
+            style={{ color: i < 2 ? "#c084fc" : "var(--text-secondary)", fontSize: i === 2 ? "11px" : undefined }}
+          >
+            {value}
+          </span>
         </div>
-      )}
+      ))}
     </div>
   );
 }
