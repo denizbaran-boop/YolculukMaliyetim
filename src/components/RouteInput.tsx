@@ -327,9 +327,14 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
     <div className="flex flex-col gap-4 relative overflow-visible">
       {/* Origin */}
       <div ref={originBoxRef} className="relative z-[130]">
-        <label className="label">Nereden</label>
-        <div className="relative">
-          <div className="relative">
+        <div className="flex items-center justify-between mb-1">
+          <label className="label mb-0">Nereden</label>
+          <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
+            öneri: {originSuggs.length}
+          </span>
+        </div>
+        <div className="relative overflow-visible">
+          <div className="relative overflow-visible">
             <span style={iconStyle("#a855f7")}>
               <PinStartIcon />
             </span>
@@ -386,9 +391,14 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
 
       {/* Destination */}
       <div ref={destBoxRef} className="relative z-[120]">
-        <label className="label">Nereye</label>
-        <div className="relative">
-          <div className="relative">
+        <div className="flex items-center justify-between mb-1">
+          <label className="label mb-0">Nereye</label>
+          <span className="text-[11px]" style={{ color: "var(--text-secondary)" }}>
+            öneri: {destSuggs.length}
+          </span>
+        </div>
+        <div className="relative overflow-visible">
+          <div className="relative overflow-visible">
             <span style={iconStyle("#7c3aed")}>
               <PinEndIcon />
             </span>
@@ -493,12 +503,17 @@ function SuggestionDropdown({
   return (
     <div
       style={{
-        position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 180,
-        background: "#13132b",
+        position: "absolute",
+        top: "100%",
+        left: 0,
+        width: "100%",
+        marginTop: 4,
+        zIndex: 9999,
+        background: "#0f1222",
         border: "1px solid rgba(168,85,247,0.3)",
         borderRadius: 12,
         overflow: "hidden",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+        boxShadow: "0 14px 36px rgba(0,0,0,0.62)",
       }}
     >
       {loading && (
@@ -515,12 +530,15 @@ function SuggestionDropdown({
         <button
           key={p.placeId}
           type="button"
-          onMouseDown={() => onSelect(p)}
+          onMouseDown={(e) => {
+            e.currentTarget.style.background = "rgba(168,85,247,0.22)";
+            onSelect(p);
+          }}
           style={{
             display: "block", width: "100%", padding: "10px 14px",
             textAlign: "left", background: "none", border: "none", cursor: "pointer",
             borderBottom: i < predictions.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none",
-            transition: "background 0.15s",
+            transition: "background 0.15s, transform 0.1s",
           }}
           onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(168,85,247,0.12)")}
           onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
