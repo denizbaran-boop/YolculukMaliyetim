@@ -1,378 +1,320 @@
 /**
  * fetchFuelPrices.ts
  *
- * Fetches live fuel prices from Opet's public fuel-prices page
- * (https://www.opet.com.tr/akaryakit-fiyatlari).
+ * Fetches live fuel prices from Opet's **internal JSON API**:
+ *   https://api.opet.com.tr/api/fuelprices/allprices
  *
- * Why Opet?
- *  - Explicitly mentioned as a preferred source by project requirements
- *  - Turkey's second-largest fuel retailer; prices are publicly listed for customers
- *  - The page is server-rendered (SSR) for SEO — prices are in initial HTML
- *  - EPDK publishes PDF/complex tables; Opet is far easier to parse reliably
+ * Discovered from inspecting FuelPrice.js (the React component served at
+ * opet.com.tr/akaryakit-fiyatlari). The page is a client-rendered SPA —
+ * HTML scraping of that page yields nothing useful. This JSON endpoint is
+ * what the component actually calls, and it returns structured data for all
+ * 81 Turkish provinces with no auth required.
  *
- * Caching: module-level in-memory cache with 15-minute TTL.
- * In serverless environments each cold-start begins with an empty cache
- * (cache miss → fetch → fill); warm invocations reuse the cached entry.
+ * ── Products returned by the API ────────────────────────────────────────────
+ *   A100  "Kurşunsuz Benzin 95"  ← gasoline
+ *   A121  "Motorin UltraForce"   ← diesel (UltraForce, preferred)
+ *   A128  "Motorin EcoForce"     ← diesel (EcoForce, fallback)
+ *   A110  "Gazyağı"              (kerosene — ignored)
+ *   A201  "Kalorifer Yakıtı"     (heating oil — ignored)
+ *   A212  "Fuel Oil"             (ignored)
+ *   A218  "Yüksek Kükürtlü Fuel Oil" (ignored)
  *
- * Fallback chain:
- *  1. Fresh live data  (isFallback: false)
- *  2. Stale but valid last-known data  (isFallback: false, note stale)
- *  3. null  →  caller must use static reference prices  (isFallback: true)
+ *   ⚠ LPG / Otogaz is NOT sold by Opet → not in the API.
+ *     We use a static reference value for LPG (clearly labelled).
+ *
+ * ── City → province matching ─────────────────────────────────────────────────
+ *   - allprices returns one entry per province (MERKEZ district)
+ *   - We match the incoming city name against province names (normalised)
+ *   - If no match (e.g. "Biga" → district of Çanakkale, not a province name),
+ *     we return the national average of all 81 provinces
+ *   - All prices are labelled with matchedProvince so callers know what was used
+ *
+ * ── Caching ──────────────────────────────────────────────────────────────────
+ *   Module-level in-memory cache, 15-minute TTL.
+ *   On Vercel serverless each cold-start begins empty (cache-miss → fetch → fill).
+ *   Last-valid data is retained across TTL expiries.
  */
 
-const SOURCE_URL   = "https://www.opet.com.tr/akaryakit-fiyatlari";
-const SOURCE_LABEL = "Opet İstanbul Avrupa";
-const CACHE_TTL_MS = 15 * 60 * 1_000; // 15 minutes
+// ── Opet API endpoints ────────────────────────────────────────────────────────
+const API_BASE         = "https://api.opet.com.tr/api";
+const ALL_PRICES_URL   = `${API_BASE}/fuelprices/allprices`;
+const LAST_UPDATE_URL  = `${API_BASE}/fuelprices/lastupdate`;
+const SOURCE_LABEL     = "Opet (api.opet.com.tr)";
 
-// ── Types ────────────────────────────────────────────────────────────────────
+// LPG is not in Opet API — static reference value (March 2026, EPDK max price band)
+const LPG_STATIC_REF  = 32.15;
+const LPG_SOURCE_NOTE = "Statik referans (LPG Opet API'sinde yok)";
+
+const CACHE_TTL_MS = 15 * 60 * 1_000;
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface OpetPriceEntry {
+  id:               string;
+  productName:      string;
+  productShortName: string;
+  amount:           number;
+  productCode:      string;
+}
+
+interface OpetProvinceEntry {
+  provinceCode: number;
+  provinceName: string;
+  districtCode: string;
+  districtName: string;
+  prices:       OpetPriceEntry[];
+}
+
+/** What we extract from the API for one province */
+interface ProvincePrices {
+  provinceCode: number;
+  provinceName: string;  // uppercase, Turkish, e.g. "ÇANAKKALE"
+  gasoline:     number;  // A100 Kurşunsuz Benzin 95
+  diesel:       number;  // A121 UltraForce, or A128 EcoForce
+  matchedGasolineLabel: string;
+  matchedDieselLabel:   string;
+}
 
 export interface LiveFuelData {
   gasoline:  number;
   diesel:    number;
-  lpg:       number;
+  lpg:       number;         // static reference; lpgIsStatic: true
+  lpgIsStatic: boolean;
   electric:  number | null;
   source:    string;
-  fetchedAt: string; // ISO timestamp of the actual fetch
+  lpgSource: string;
+  fetchedAt:       string;   // ISO — when we fetched from Opet
+  opetLastUpdate:  string;   // date string from Opet lastupdate endpoint
+  matchedProvince: string;   // province name used, or "Türkiye (ulusal ortalama)"
+  matchedGasolineLabel: string;
+  matchedDieselLabel:   string;
+  isNationalAverage: boolean;
 }
 
 interface CacheEntry {
-  data:     LiveFuelData;
-  cachedAt: number; // Date.now() when stored
+  provinces: ProvincePrices[];
+  opetLastUpdate: string;
+  cachedAt:   number;
 }
 
-// ── Module-level cache ────────────────────────────────────────────────────────
+// ── Module-level state ────────────────────────────────────────────────────────
 
-let _cache:     CacheEntry | null = null; // current entry (may be stale)
-let _lastValid: LiveFuelData | null = null; // last successful fetch — survives TTL expiry
+let _cache:     CacheEntry   | null = null;
+let _lastValid: CacheEntry   | null = null;
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
 /**
- * Returns live fuel prices, cached for up to 15 minutes.
+ * Returns live fuel prices for the given city (province), cached for 15 min.
+ * Pass an empty string for the national average.
  *
- * Returns `null` only when the source has never been reached AND no
- * in-process last-valid data exists. In that case the caller should
- * fall back to static reference prices.
+ * Returns null only if the API has never been reached and no cached data exists.
  */
-export async function fetchFuelPrices(): Promise<LiveFuelData | null> {
-  const now = Date.now();
+export async function fetchFuelPricesForCity(city: string): Promise<LiveFuelData | null> {
+  const provinces = await getProvinceCache();
 
-  // Cache hit
-  if (_cache && now - _cache.cachedAt < CACHE_TTL_MS) {
-    const ageMin = ((now - _cache.cachedAt) / 60_000).toFixed(1);
-    console.log(`[fetchFuelPrices] Cache hit — age ${ageMin} min, source: ${SOURCE_URL}`);
-    return _cache.data;
+  if (!provinces) return null;
+
+  const { provinces: pList, opetLastUpdate } = provinces;
+  const fetchedAt = new Date().toISOString();
+
+  if (!city.trim()) {
+    const avg = nationalAverage(pList);
+    return {
+      ...avg,
+      lpg:        LPG_STATIC_REF,
+      lpgIsStatic: true,
+      electric:   null,
+      source:     SOURCE_LABEL,
+      lpgSource:  LPG_SOURCE_NOTE,
+      fetchedAt,
+      opetLastUpdate,
+      matchedProvince:       "Türkiye (ulusal ortalama)",
+      isNationalAverage:     true,
+    };
   }
 
-  console.log("[fetchFuelPrices] Cache miss — fetching from", SOURCE_URL);
+  const match = findProvince(pList, city);
+
+  if (match) {
+    return {
+      gasoline:  match.gasoline,
+      diesel:    match.diesel,
+      lpg:       LPG_STATIC_REF,
+      lpgIsStatic: true,
+      electric:  null,
+      source:    SOURCE_LABEL,
+      lpgSource: LPG_SOURCE_NOTE,
+      fetchedAt,
+      opetLastUpdate,
+      matchedProvince:       match.provinceName,
+      matchedGasolineLabel:  match.matchedGasolineLabel,
+      matchedDieselLabel:    match.matchedDieselLabel,
+      isNationalAverage:     false,
+    };
+  }
+
+  // City is a district or unrecognised — return national average
+  const avg = nationalAverage(pList);
+  return {
+    ...avg,
+    lpg:        LPG_STATIC_REF,
+    lpgIsStatic: true,
+    electric:   null,
+    source:     SOURCE_LABEL,
+    lpgSource:  LPG_SOURCE_NOTE,
+    fetchedAt,
+    opetLastUpdate,
+    matchedProvince:   `Türkiye (ulusal ortalama — "${city}" il eşleşmedi)`,
+    isNationalAverage: true,
+  };
+}
+
+// ── Province cache ────────────────────────────────────────────────────────────
+
+async function getProvinceCache(): Promise<CacheEntry | null> {
+  const now = Date.now();
+
+  if (_cache && now - _cache.cachedAt < CACHE_TTL_MS) {
+    const age = ((now - _cache.cachedAt) / 60_000).toFixed(1);
+    console.log(`[fetchFuelPrices] Cache hit — ${age} min old`);
+    return _cache;
+  }
+
+  console.log("[fetchFuelPrices] Cache miss — fetching", ALL_PRICES_URL);
 
   try {
-    const res = await fetch(SOURCE_URL, {
-      // Bypass Next.js fetch cache — we own the cache here
-      cache: "no-store",
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
-          "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        Accept:          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8",
-        Referer:         "https://www.opet.com.tr/",
-      },
-    });
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status} ${res.statusText}`);
-    }
-
-    const html = await res.text();
-
-    // Short preview for debugging
-    console.log(
-      "[fetchFuelPrices] Raw HTML preview (first 1000 chars):\n",
-      html.slice(0, 1_000)
-    );
-
-    const parsed = parseFuelPrices(html);
-
-    if (!parsed) {
-      throw new Error("Could not parse fuel prices from Opet HTML");
-    }
-
-    console.log("[fetchFuelPrices] Parsed prices:", parsed);
-
-    const data: LiveFuelData = {
-      gasoline:  parsed.gasoline,
-      diesel:    parsed.diesel,
-      lpg:       parsed.lpg,
-      electric:  parsed.electric,
-      source:    SOURCE_LABEL,
-      fetchedAt: new Date().toISOString(),
+    const headers = {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      Accept:          "application/json, */*",
+      "Accept-Language": "tr-TR,tr;q=0.9",
+      Referer:         "https://www.opet.com.tr/akaryakit-fiyatlari",
+      Origin:          "https://www.opet.com.tr",
     };
 
-    _cache     = { data, cachedAt: now };
-    _lastValid = data;
+    // Fetch both endpoints in parallel
+    const [pricesRes, updateRes] = await Promise.all([
+      fetch(ALL_PRICES_URL, { cache: "no-store", headers }),
+      fetch(LAST_UPDATE_URL, { cache: "no-store", headers }),
+    ]);
 
-    return data;
-  } catch (err) {
-    console.error("[fetchFuelPrices] Fetch/parse error:", err);
-
-    if (_lastValid) {
-      console.log(
-        "[fetchFuelPrices] Returning last valid data from",
-        _lastValid.fetchedAt
-      );
-      return _lastValid;
+    if (!pricesRes.ok) {
+      throw new Error(`allprices HTTP ${pricesRes.status}`);
     }
 
+    const rawData: OpetProvinceEntry[] = await pricesRes.json();
+    let opetLastUpdate = "";
+    if (updateRes.ok) {
+      const upd = await updateRes.json() as { lastUpdateDate?: string };
+      opetLastUpdate = upd.lastUpdateDate ?? "";
+    }
+
+    // Log a short preview of raw response for debugging
+    console.log(
+      "[fetchFuelPrices] API returned", rawData.length, "entries.",
+      "First entry:", JSON.stringify(rawData[0])
+    );
+    console.log("[fetchFuelPrices] opetLastUpdate:", opetLastUpdate);
+
+    const provinces = rawData.map(parseProvinceEntry).filter((p): p is ProvincePrices => p !== null);
+
+    console.log(
+      "[fetchFuelPrices] Parsed", provinces.length, "provinces.",
+      "Sample (index 0):", JSON.stringify(provinces[0])
+    );
+
+    const entry: CacheEntry = { provinces, opetLastUpdate, cachedAt: now };
+    _cache     = entry;
+    _lastValid = entry;
+    return entry;
+
+  } catch (err) {
+    console.error("[fetchFuelPrices] Fetch error:", err);
+    if (_lastValid) {
+      console.log("[fetchFuelPrices] Using last-valid data from", new Date(_lastValid.cachedAt).toISOString());
+      return _lastValid;
+    }
     return null;
   }
 }
 
-// ── HTML parsing ─────────────────────────────────────────────────────────────
+// ── Parsing ───────────────────────────────────────────────────────────────────
 
-interface RawPrices {
+function parseProvinceEntry(entry: OpetProvinceEntry): ProvincePrices | null {
+  const gasEntry = entry.prices.find(p => p.productCode === "A100");
+  const dieselEntry =
+    entry.prices.find(p => p.productCode === "A121") ??   // UltraForce preferred
+    entry.prices.find(p => p.productCode === "A128");      // EcoForce fallback
+
+  if (!gasEntry || !dieselEntry) {
+    console.warn(
+      "[parseProvinceEntry] Missing A100/A121/A128 in",
+      entry.provinceName, entry.districtName
+    );
+    return null;
+  }
+
+  return {
+    provinceCode: entry.provinceCode,
+    provinceName: entry.provinceName,
+    gasoline:     gasEntry.amount,
+    diesel:       dieselEntry.amount,
+    matchedGasolineLabel: gasEntry.productName,    // "Kurşunsuz Benzin 95"
+    matchedDieselLabel:   dieselEntry.productName, // "Motorin UltraForce"
+  };
+}
+
+// ── City matching ─────────────────────────────────────────────────────────────
+
+/** Normalises Turkish characters for comparison */
+export function normalizeTurkish(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/ı/g, "i").replace(/İ/g, "i")
+    .replace(/ğ/g, "g").replace(/ş/g, "s")
+    .replace(/ç/g, "c").replace(/ö/g, "o")
+    .replace(/ü/g, "u");
+}
+
+function findProvince(provinces: ProvincePrices[], city: string): ProvincePrices | null {
+  const normalizedCity = normalizeTurkish(city.trim());
+
+  // Exact match first
+  const exact = provinces.find(
+    p => normalizeTurkish(p.provinceName) === normalizedCity
+  );
+  if (exact) return exact;
+
+  // Partial match (city contains province name or vice versa)
+  const partial = provinces.find(p => {
+    const np = normalizeTurkish(p.provinceName);
+    return normalizedCity.includes(np) || np.includes(normalizedCity);
+  });
+  return partial ?? null;
+}
+
+// ── National average ──────────────────────────────────────────────────────────
+
+function nationalAverage(provinces: ProvincePrices[]): {
   gasoline: number;
   diesel:   number;
-  lpg:      number;
-  electric: number | null;
-}
-
-/**
- * Extracts fuel prices from Opet's HTML page.
- *
- * Strategy:
- *  1. First try JSON embedded in a <script> tag (fastest, most reliable).
- *  2. Fall back to keyword-proximity scanning in plain HTML text.
- *
- * Matching is name-based (NOT index-based) so layout changes don't silently
- * return wrong fuel types.
- *
- * Turkish decimal format: "62,02" or "62.02" — both are normalised.
- */
-function parseFuelPrices(html: string): RawPrices | null {
-  // ── Strategy 1: JSON in script tags ─────────────────────────────────────
-  const jsonResult = tryParseFromJson(html);
-  if (jsonResult) {
-    console.log("[parseFuelPrices] Parsed via JSON strategy");
-    return jsonResult;
+  matchedGasolineLabel: string;
+  matchedDieselLabel:   string;
+} {
+  if (provinces.length === 0) {
+    return {
+      gasoline: 0, diesel: 0,
+      matchedGasolineLabel: "", matchedDieselLabel: "",
+    };
   }
-
-  // ── Strategy 2: Keyword proximity scan ─────────────────────────────────
-  const htmlResult = tryParseFromHtml(html);
-  if (htmlResult) {
-    console.log("[parseFuelPrices] Parsed via HTML keyword strategy");
-    return htmlResult;
-  }
-
-  console.warn("[parseFuelPrices] All parsing strategies failed");
-  return null;
-}
-
-// ── Strategy 1: JSON ─────────────────────────────────────────────────────────
-
-function tryParseFromJson(html: string): RawPrices | null {
-  // Look for JSON arrays/objects inside <script> tags that contain price data
-  const scriptMatches = html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi);
-
-  for (const m of scriptMatches) {
-    const body = m[1];
-    if (!body || body.length < 20) continue;
-
-    // Look for JSON that mentions Turkish fuel keywords
-    if (
-      !body.includes("Motorin") &&
-      !body.includes("Benzin") &&
-      !body.includes("motorin") &&
-      !body.includes("benzin")
-    ) continue;
-
-    try {
-      // Try to find a JSON array or object with price fields
-      const arrayMatch = body.match(/\[[\s\S]*?\]/);
-      if (arrayMatch) {
-        const arr = JSON.parse(arrayMatch[0]) as unknown[];
-        const result = extractPricesFromJsonArray(arr);
-        if (result) return result;
-      }
-
-      const objMatch = body.match(/\{[\s\S]*?\}/);
-      if (objMatch) {
-        const obj = JSON.parse(objMatch[0]) as Record<string, unknown>;
-        const result = extractPricesFromJsonObject(obj);
-        if (result) return result;
-      }
-    } catch {
-      // not valid JSON — continue
-    }
-  }
-
-  return null;
-}
-
-function extractPricesFromJsonArray(arr: unknown[]): RawPrices | null {
-  let gasoline: number | null = null;
-  let diesel:   number | null = null;
-  let lpg:      number | null = null;
-  let electric: number | null = null;
-
-  for (const item of arr) {
-    if (typeof item !== "object" || item === null) continue;
-    const obj = item as Record<string, unknown>;
-
-    const name  = String(obj.name ?? obj.ad ?? obj.urun ?? obj.fuelType ?? obj.type ?? "");
-    const price = toNumber(obj.price ?? obj.fiyat ?? obj.deger ?? obj.value);
-
-    if (price === null) continue;
-
-    if (matchesGasoline(name)) gasoline = price;
-    else if (matchesDiesel(name))   diesel   = price;
-    else if (matchesLpg(name))      lpg      = price;
-    else if (matchesElectric(name)) electric = price;
-  }
-
-  if (gasoline === null || diesel === null || lpg === null) return null;
-  return { gasoline, diesel, lpg, electric };
-}
-
-function extractPricesFromJsonObject(obj: Record<string, unknown>): RawPrices | null {
-  // Handle flat objects with explicit key names
-  const gasoline = toNumber(
-    obj.benzin ?? obj.gasoline ?? obj.super95 ?? obj["Benzin 95"] ?? obj["Süper 95"]
-  );
-  const diesel = toNumber(
-    obj.motorin ?? obj.diesel ?? obj["Euro Dizel"] ?? obj["Motorin"]
-  );
-  const lpg = toNumber(
-    obj.otogaz ?? obj.lpg ?? obj["Otogaz"] ?? obj["Otogaz LPG"]
-  );
-  const electric = toNumber(obj.elektrik ?? obj.electric ?? obj["Elektrik"]);
-
-  if (gasoline === null || diesel === null || lpg === null) return null;
-  return { gasoline, diesel, lpg, electric };
-}
-
-// ── Strategy 2: HTML keyword proximity ───────────────────────────────────────
-
-function tryParseFromHtml(html: string): RawPrices | null {
-  // Decode HTML entities so we don't miss names like "S&uuml;per"
-  const decoded = decodeHtmlEntities(html);
-
-  const gasoline = findPriceNearKeywords(decoded, [
-    "Süper 95", "Super 95", "Benzin 95", "Kurşunsuz 95",
-    "Kursunsuz 95", "95 Oktan", "95 oktan",
-  ]);
-
-  const diesel = findPriceNearKeywords(decoded, [
-    "Euro Dizel", "Euro Motorin", "Motorin", "Dizel",
-  ]);
-
-  const lpg = findPriceNearKeywords(decoded, [
-    "Otogaz LPG", "Otogaz", "LPG",
-  ]);
-
-  const electric = findPriceNearKeywords(decoded, [
-    "Elektrik", "Şarj", "kWh",
-  ]);
-
-  console.log("[tryParseFromHtml] Raw:", { gasoline, diesel, lpg, electric });
-
-  if (gasoline === null || diesel === null || lpg === null) return null;
-  return { gasoline, diesel, lpg, electric };
-}
-
-/**
- * Finds the first occurrence of any keyword in the HTML text and extracts
- * the nearest decimal-looking number within 300 characters of it.
- *
- * Numbers must be in a plausible price range (filtered by `isPlausiblePrice`).
- */
-function findPriceNearKeywords(text: string, keywords: string[]): number | null {
-  for (const kw of keywords) {
-    let searchFrom = 0;
-
-    while (true) {
-      const idx = text.indexOf(kw, searchFrom);
-      if (idx === -1) break;
-
-      // Scan a window around the keyword — both before and after
-      const windowStart = Math.max(0, idx - 100);
-      const windowEnd   = Math.min(text.length, idx + kw.length + 300);
-      const slice       = text.slice(windowStart, windowEnd);
-
-      // Match Turkish/European decimal numbers: "62,02" or "62.02" or "32,10"
-      // Must start with 2-3 digits followed by optional comma/dot + 2 digits
-      const priceRegex = /\b(\d{2,3}[,.]?\d{0,2})\b/g;
-      let match: RegExpExecArray | null;
-
-      while ((match = priceRegex.exec(slice)) !== null) {
-        const raw   = match[1].replace(",", ".");
-        const value = parseFloat(raw);
-        if (!isNaN(value) && isPlausiblePrice(value)) {
-          return value;
-        }
-      }
-
-      searchFrom = idx + 1;
-    }
-  }
-
-  return null;
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Minimal HTML entity decoder (covers the most common cases in Turkish pages) */
-function decodeHtmlEntities(html: string): string {
-  return html
-    .replace(/&uuml;/g,  "ü").replace(/&Uuml;/g,  "Ü")
-    .replace(/&ouml;/g,  "ö").replace(/&Ouml;/g,  "Ö")
-    .replace(/&ccedil;/g,"ç").replace(/&Ccedil;/g,"Ç")
-    .replace(/&scedil;/g,"ş").replace(/&Scedil;/g,"Ş")
-    .replace(/&iuml;/g,  "ı").replace(/&Iuml;/g,  "İ")
-    .replace(/&gbreve;/g,"ğ").replace(/&Gbreve;/g,"Ğ")
-    .replace(/&amp;/g,   "&")
-    .replace(/&lt;/g,    "<")
-    .replace(/&gt;/g,    ">")
-    .replace(/&nbsp;/g,  " ");
-}
-
-/** Converts an unknown value to a number or null */
-function toNumber(val: unknown): number | null {
-  if (typeof val === "number") return isNaN(val) ? null : val;
-  if (typeof val === "string") {
-    const n = parseFloat(val.replace(",", "."));
-    return isNaN(n) ? null : n;
-  }
-  return null;
-}
-
-/**
- * Rejects numbers that can't plausibly be a Turkish fuel price.
- * Anchored to known 2026 ranges; adjust if prices drift far outside them.
- */
-function isPlausiblePrice(value: number): boolean {
-  // Gasoline/Diesel: 45–150 TL/L
-  // LPG: 20–80 TL/L
-  // Electric: 5–30 TL/kWh
-  // Combined gate: anything 20–150
-  return value >= 20 && value <= 150;
-}
-
-/** Fuel-name matchers (case-insensitive, trimmed) */
-function matchesGasoline(name: string): boolean {
-  const n = name.toLowerCase();
-  return n.includes("süper") || n.includes("super") ||
-         n.includes("benzin") || n.includes("kurşunsuz") || n.includes("kursunsuz");
-}
-function matchesDiesel(name: string): boolean {
-  const n = name.toLowerCase();
-  return n.includes("motorin") || n.includes("dizel") || n.includes("diesel");
-}
-function matchesLpg(name: string): boolean {
-  const n = name.toLowerCase();
-  return n.includes("otogaz") || n.includes("lpg");
-}
-function matchesElectric(name: string): boolean {
-  const n = name.toLowerCase();
-  return n.includes("elektrik") || n.includes("electric") || n.includes("kwh");
+  const avgGas  = provinces.reduce((s, p) => s + p.gasoline, 0) / provinces.length;
+  const avgDizel = provinces.reduce((s, p) => s + p.diesel,  0) / provinces.length;
+  return {
+    gasoline: Math.round(avgGas   * 100) / 100,
+    diesel:   Math.round(avgDizel * 100) / 100,
+    matchedGasolineLabel: "Kurşunsuz Benzin 95 (ulusal ortalama)",
+    matchedDieselLabel:   "Motorin UltraForce (ulusal ortalama)",
+  };
 }

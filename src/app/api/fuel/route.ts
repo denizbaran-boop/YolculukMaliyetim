@@ -4,76 +4,148 @@ import {
   TURKEY_AVERAGE,
   FUEL_PRODUCT_MAP,
 } from "@/data/fuelPrices";
-import { fetchFuelPrices } from "@/lib/fetchFuelPrices";
+import { fetchFuelPricesForCity, normalizeTurkish } from "@/lib/fetchFuelPrices";
 import type { FuelPrices } from "@/types";
+
+// ── Route Handler ─────────────────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
-  const city = searchParams.get("city")?.trim() ?? "";
+  const requestedCity   = searchParams.get("city")?.trim() ?? "";
+  const normalizedCity  = normalizeTurkish(requestedCity);
 
-  // ── 1. Attempt live fetch (with in-memory 15-min cache) ─────────────────
-  const live = await fetchFuelPrices();
+  // ── 1. Attempt live Opet JSON API fetch ────────────────────────────────────
+  let live = null;
+  let liveFetchSucceeded = false;
+  let fallbackReason: string | null = null;
 
-  if (live) {
+  try {
+    live = await fetchFuelPricesForCity(requestedCity);
+    if (live) {
+      liveFetchSucceeded = true;
+    } else {
+      fallbackReason = "Opet API erişilemedi ve önbellekte veri yok";
+    }
+  } catch (err) {
+    fallbackReason = `Opet fetch hatası: ${String(err)}`;
+    console.error("[fuel/route] fetchFuelPricesForCity threw:", err);
+  }
+
+  // ── 2. Validate live data ─────────────────────────────────────────────────
+  if (live && liveFetchSucceeded) {
+    const candidate: Partial<FuelPrices> = {
+      gasoline: live.gasoline,
+      diesel:   live.diesel,
+      lpg:      live.lpg,
+    };
+
+    if (!validateFuelPrices(candidate)) {
+      fallbackReason = `Canlı veri doğrulamadan geçmedi: benzin=${live.gasoline} motorin=${live.diesel} lpg=${live.lpg}`;
+      console.error("[fuel/route] Live data failed validation:", candidate);
+      liveFetchSucceeded = false;
+      live = null;
+    }
+  }
+
+  // ── 3. Build response ─────────────────────────────────────────────────────
+  if (live && liveFetchSucceeded) {
     const prices: FuelPrices = {
-      city:      city || "Türkiye",
+      city:      requestedCity || "Türkiye",
       updatedAt: live.fetchedAt,
       gasoline:  live.gasoline,
       diesel:    live.diesel,
       lpg:       live.lpg,
-      // Opet doesn't publish EV charging prices; keep a reference value
       electric:  live.electric ?? TURKEY_AVERAGE.electric,
       isFallback: false,
       source:    live.source,
     };
 
-    console.log("[fuel/route] Live price lookup", {
-      city:           prices.city,
-      parsedGasoline: prices.gasoline,
-      parsedDiesel:   prices.diesel,
-      parsedLPG:      prices.lpg,
-      source:         prices.source,
-      fetchedAt:      prices.updatedAt,
-      productMap:     FUEL_PRODUCT_MAP,
+    console.log("[fuel/route] Live data OK", {
+      requestedCity,
+      normalizedCity,
+      matchedProvince:      live.matchedProvince,
+      isNationalAverage:    live.isNationalAverage,
+      gasoline:             live.gasoline,
+      diesel:               live.diesel,
+      lpg:                  live.lpg,
+      matchedGasolineLabel: live.matchedGasolineLabel,
+      matchedDieselLabel:   live.matchedDieselLabel,
+      opetLastUpdate:       live.opetLastUpdate,
+      fetchedAt:            live.fetchedAt,
+      productMap:           FUEL_PRODUCT_MAP,
     });
 
-    // Validate plausibility + diesel > gasoline invariant
-    if (!validateFuelPrices(prices)) {
-      console.error(
-        "[fuel/route] Live prices failed validation — falling back to static",
-        { gasoline: prices.gasoline, diesel: prices.diesel, lpg: prices.lpg }
-      );
-      return staticFallback(city);
-    }
+    return NextResponse.json({
+      // ── Standard FuelPrices fields ─────────────────────────────────────
+      ...prices,
 
-    return NextResponse.json(prices);
+      // ── Debug / transparency fields ────────────────────────────────────
+      requestedCity,
+      normalizedCity,
+      liveFetchSucceeded:   true,
+      fallbackReason:       null,
+      matchedProvince:      live.matchedProvince,
+      isNationalAverage:    live.isNationalAverage,
+      opetLastUpdate:       live.opetLastUpdate,
+      matchedLabels: {
+        gasoline: live.matchedGasolineLabel,
+        diesel:   live.matchedDieselLabel,
+        lpg:      live.lpgSource,
+      },
+      parsedValues: {
+        gasoline: live.gasoline,
+        diesel:   live.diesel,
+        lpg:      live.lpg,
+        electric: live.electric,
+      },
+    });
   }
 
-  // ── 2. Live fetch unavailable — use static reference prices ──────────────
-  console.warn("[fuel/route] Live data unavailable — using static fallback");
-  return staticFallback(city);
-}
+  // ── 4. Static fallback ────────────────────────────────────────────────────
+  console.warn("[fuel/route] Static fallback —", fallbackReason);
 
-// ── Static fallback ───────────────────────────────────────────────────────────
-
-function staticFallback(city: string): NextResponse {
   const updatedAt = new Date().toISOString();
   const prices: FuelPrices = {
     ...TURKEY_AVERAGE,
-    city:      city || "Türkiye",
+    city:       requestedCity || "Türkiye",
     updatedAt,
     isFallback: true,
-    source:    "Statik referans verisi (Mart 2026)",
+    source:     "Statik referans verisi (Mart 2026 — canlı veri alınamadı)",
   };
 
-  console.log("[fuel/route] Static fallback", {
-    city:           prices.city,
-    parsedGasoline: TURKEY_AVERAGE.gasoline,
-    parsedDiesel:   TURKEY_AVERAGE.diesel,
-    parsedLPG:      TURKEY_AVERAGE.lpg,
-    productMap:     FUEL_PRODUCT_MAP,
+  console.log("[fuel/route] Returning static fallback", {
+    requestedCity,
+    normalizedCity,
+    fallbackReason,
+    gasoline: TURKEY_AVERAGE.gasoline,
+    diesel:   TURKEY_AVERAGE.diesel,
+    lpg:      TURKEY_AVERAGE.lpg,
+    productMap: FUEL_PRODUCT_MAP,
     updatedAt,
   });
 
-  return NextResponse.json(prices);
+  return NextResponse.json({
+    // ── Standard FuelPrices fields ──────────────────────────────────────
+    ...prices,
+
+    // ── Debug / transparency fields ─────────────────────────────────────
+    requestedCity,
+    normalizedCity,
+    liveFetchSucceeded:  false,
+    fallbackReason,
+    matchedProvince:     null,
+    isNationalAverage:   null,
+    opetLastUpdate:      null,
+    matchedLabels: {
+      gasoline: "Statik referans",
+      diesel:   "Statik referans",
+      lpg:      "Statik referans",
+    },
+    parsedValues: {
+      gasoline: TURKEY_AVERAGE.gasoline,
+      diesel:   TURKEY_AVERAGE.diesel,
+      lpg:      TURKEY_AVERAGE.lpg,
+      electric: TURKEY_AVERAGE.electric,
+    },
+  });
 }
