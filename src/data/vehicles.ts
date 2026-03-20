@@ -641,6 +641,97 @@ export const VEHICLES: Vehicle[] = [
     { id: "bmwi4-22-m50",     label: "M50 544 hp",           fuelType: "electric", consumption: 19.5 },
   ]},
 
+  // 1 Serisi — 2020–2025
+  { make: "BMW", model: "1 Serisi", year: 2025, variants: [
+    { id: "bmw1-25-116i",    label: "116i 109 hp Manuel",    fuelType: "gasoline", consumption: 5.8 },
+    { id: "bmw1-25-118i",    label: "118i 136 hp Otomatik",  fuelType: "gasoline", consumption: 6.1 },
+    { id: "bmw1-25-120i",    label: "120i 170 hp Otomatik",  fuelType: "gasoline", consumption: 6.4 },
+    { id: "bmw1-25-118d",    label: "118d 150 hp Otomatik",  fuelType: "diesel",   consumption: 4.7 },
+  ]},
+  { make: "BMW", model: "1 Serisi", year: 2024, variants: [
+    { id: "bmw1-24-116i",    label: "116i 109 hp Manuel",    fuelType: "gasoline", consumption: 5.9 },
+    { id: "bmw1-24-118i",    label: "118i 136 hp Otomatik",  fuelType: "gasoline", consumption: 6.2 },
+    { id: "bmw1-24-120i",    label: "120i 170 hp Otomatik",  fuelType: "gasoline", consumption: 6.5 },
+    { id: "bmw1-24-118d",    label: "118d 150 hp Otomatik",  fuelType: "diesel",   consumption: 4.8 },
+  ]},
+  { make: "BMW", model: "1 Serisi", year: 2023, variants: [
+    { id: "bmw1-23-116i",    label: "116i 109 hp Manuel",    fuelType: "gasoline", consumption: 6.0 },
+    { id: "bmw1-23-118i",    label: "118i 140 hp Otomatik",  fuelType: "gasoline", consumption: 6.3 },
+    { id: "bmw1-23-118d",    label: "118d 150 hp Otomatik",  fuelType: "diesel",   consumption: 4.9 },
+  ]},
+  { make: "BMW", model: "1 Serisi", year: 2022, variants: [
+    { id: "bmw1-22-116i",    label: "116i 109 hp Manuel",    fuelType: "gasoline", consumption: 6.1 },
+    { id: "bmw1-22-118i",    label: "118i 140 hp Otomatik",  fuelType: "gasoline", consumption: 6.4 },
+    { id: "bmw1-22-118d",    label: "118d 150 hp Otomatik",  fuelType: "diesel",   consumption: 5.0 },
+  ]},
+  { make: "BMW", model: "1 Serisi", year: 2021, variants: [
+    { id: "bmw1-21-116i",    label: "116i 109 hp Manuel",    fuelType: "gasoline", consumption: 6.2 },
+    { id: "bmw1-21-118i",    label: "118i 140 hp Otomatik",  fuelType: "gasoline", consumption: 6.5 },
+    { id: "bmw1-21-118d",    label: "118d 150 hp Otomatik",  fuelType: "diesel",   consumption: 5.0 },
+  ]},
+  { make: "BMW", model: "1 Serisi", year: 2020, variants: [
+    { id: "bmw1-20-116i",    label: "116i 109 hp Manuel",    fuelType: "gasoline", consumption: 6.3 },
+    { id: "bmw1-20-118i",    label: "118i 140 hp Otomatik",  fuelType: "gasoline", consumption: 6.6 },
+    { id: "bmw1-20-118d",    label: "118d 150 hp Otomatik",  fuelType: "diesel",   consumption: 5.1 },
+  ]},
+
+  // 2 Serisi Gran Coupe — 2020–2025
+  { make: "BMW", model: "2 Serisi Gran Coupe", year: 2025, variants: [
+    { id: "bmw2gc-25-218i",  label: "218i 136 hp Otomatik",  fuelType: "gasoline", consumption: 6.3 },
+    { id: "bmw2gc-25-220i",  label: "220i 170 hp Otomatik",  fuelType: "gasoline", consumption: 6.7 },
+    { id: "bmw2gc-25-218d",  label: "218d 150 hp Otomatik",  fuelType: "diesel",   consumption: 4.9 },
+  ]},
+  { make: "BMW", model: "2 Serisi Gran Coupe", year: 2024, variants: [
+    { id: "bmw2gc-24-218i",  label: "218i 136 hp Otomatik",  fuelType: "gasoline", consumption: 6.4 },
+    { id: "bmw2gc-24-220i",  label: "220i 170 hp Otomatik",  fuelType: "gasoline", consumption: 6.8 },
+    { id: "bmw2gc-24-218d",  label: "218d 150 hp Otomatik",  fuelType: "diesel",   consumption: 5.0 },
+  ]},
+  { make: "BMW", model: "2 Serisi Gran Coupe", year: 2023, variants: [
+    { id: "bmw2gc-23-218i",  label: "218i 136 hp Otomatik",  fuelType: "gasoline", consumption: 6.5 },
+    { id: "bmw2gc-23-220i",  label: "220i 170 hp Otomatik",  fuelType: "gasoline", consumption: 6.9 },
+    { id: "bmw2gc-23-218d",  label: "218d 150 hp Otomatik",  fuelType: "diesel",   consumption: 5.1 },
+  ]},
+  { make: "BMW", model: "2 Serisi Gran Coupe", year: 2022, variants: [
+    { id: "bmw2gc-22-218i",  label: "218i 136 hp Otomatik",  fuelType: "gasoline", consumption: 6.6 },
+    { id: "bmw2gc-22-220i",  label: "220i 178 hp Otomatik",  fuelType: "gasoline", consumption: 7.0 },
+    { id: "bmw2gc-22-218d",  label: "218d 150 hp Otomatik",  fuelType: "diesel",   consumption: 5.1 },
+  ]},
+  { make: "BMW", model: "2 Serisi Gran Coupe", year: 2021, variants: [
+    { id: "bmw2gc-21-218i",  label: "218i 136 hp Otomatik",  fuelType: "gasoline", consumption: 6.7 },
+    { id: "bmw2gc-21-220i",  label: "220i 178 hp Otomatik",  fuelType: "gasoline", consumption: 7.1 },
+    { id: "bmw2gc-21-218d",  label: "218d 150 hp Otomatik",  fuelType: "diesel",   consumption: 5.2 },
+  ]},
+  { make: "BMW", model: "2 Serisi Gran Coupe", year: 2020, variants: [
+    { id: "bmw2gc-20-218i",  label: "218i 136 hp Otomatik",  fuelType: "gasoline", consumption: 6.8 },
+    { id: "bmw2gc-20-220i",  label: "220i 178 hp Otomatik",  fuelType: "gasoline", consumption: 7.2 },
+  ]},
+
+  // 2 Serisi Active Tourer — 2022–2025
+  { make: "BMW", model: "2 Serisi Active Tourer", year: 2025, variants: [
+    { id: "bmw2at-25-218i",  label: "218i 136 hp Otomatik",  fuelType: "gasoline", consumption: 6.5 },
+    { id: "bmw2at-25-220i",  label: "220i 170 hp Otomatik",  fuelType: "gasoline", consumption: 6.9 },
+    { id: "bmw2at-25-218d",  label: "218d 150 hp Otomatik",  fuelType: "diesel",   consumption: 5.0 },
+    { id: "bmw2at-25-225e",  label: "225e Plug-in Hybrid",   fuelType: "hybrid",   consumption: 1.8 },
+  ]},
+  { make: "BMW", model: "2 Serisi Active Tourer", year: 2024, variants: [
+    { id: "bmw2at-24-218i",  label: "218i 136 hp Otomatik",  fuelType: "gasoline", consumption: 6.6 },
+    { id: "bmw2at-24-220i",  label: "220i 170 hp Otomatik",  fuelType: "gasoline", consumption: 7.0 },
+    { id: "bmw2at-24-218d",  label: "218d 150 hp Otomatik",  fuelType: "diesel",   consumption: 5.1 },
+    { id: "bmw2at-24-225e",  label: "225e Plug-in Hybrid",   fuelType: "hybrid",   consumption: 1.9 },
+  ]},
+  { make: "BMW", model: "2 Serisi Active Tourer", year: 2023, variants: [
+    { id: "bmw2at-23-218i",  label: "218i 136 hp Otomatik",  fuelType: "gasoline", consumption: 6.7 },
+    { id: "bmw2at-23-220i",  label: "220i 170 hp Otomatik",  fuelType: "gasoline", consumption: 7.1 },
+    { id: "bmw2at-23-218d",  label: "218d 150 hp Otomatik",  fuelType: "diesel",   consumption: 5.2 },
+    { id: "bmw2at-23-225e",  label: "225e Plug-in Hybrid",   fuelType: "hybrid",   consumption: 2.0 },
+  ]},
+  { make: "BMW", model: "2 Serisi Active Tourer", year: 2022, variants: [
+    { id: "bmw2at-22-218i",  label: "218i 136 hp Otomatik",  fuelType: "gasoline", consumption: 6.8 },
+    { id: "bmw2at-22-220i",  label: "220i 170 hp Otomatik",  fuelType: "gasoline", consumption: 7.2 },
+    { id: "bmw2at-22-218d",  label: "218d 150 hp Otomatik",  fuelType: "diesel",   consumption: 5.3 },
+    { id: "bmw2at-22-225e",  label: "225e Plug-in Hybrid",   fuelType: "hybrid",   consumption: 2.1 },
+  ]},
+
   // ── MERCEDES ────────────────────────────────────────────────────────────
   // A Serisi — 2018–2024
   { make: "Mercedes", model: "A Serisi", year: 2024, variants: [
