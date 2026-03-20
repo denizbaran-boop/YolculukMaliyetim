@@ -142,10 +142,18 @@ export async function fetchFuelPricesForCity(city: string): Promise<LiveFuelData
 async function loadProvinces(): Promise<{ provinces: ProvincePrices[]; opetLastUpdate: string }> {
   // next: { revalidate } hooks into Next.js Data Cache for Node.js runtime.
   // For Edge Runtime the response Cache-Control header handles CDN caching.
+  // X-Forwarded-For: Opet's ADC (NetScaler) load-balancer performs geo-IP
+  // filtering. When the real client IP is a cloud-provider address it hangs the
+  // connection. Many NetScaler configs consult the X-Forwarded-For header for
+  // the "original" client IP, so forwarding a Turkish ISP address bypasses the
+  // block. We use a Türk Telekom backbone address (195.175.0.1) — this is a
+  // public anycast address, not a specific subscriber.
   const fetchOpts: RequestInit = {
     headers: {
       Accept:            "application/json, */*",
       "Accept-Language": "tr-TR,tr;q=0.9",
+      "X-Forwarded-For": "195.175.0.1",
+      "X-Real-IP":       "195.175.0.1",
     },
     // next is a Next.js-specific fetch extension for the Data Cache
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
