@@ -223,7 +223,7 @@ export default function HomePage() {
         </div>
 
         {/* Main calculator card */}
-        <div className="glass-card p-6 md:p-8 mb-5">
+        <div className="glass-card p-6 md:p-8 mb-5 overflow-visible">
           {/* Section: Vehicle */}
           <div className="flex items-center justify-between mb-4">
             <SectionHeader

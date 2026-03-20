@@ -59,6 +59,30 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
   const routeAbortRef = useRef<AbortController | null>(null);
   onRouteChangeRef.current = onRouteChange;
 
+  useEffect(() => {
+    console.log("[RouteInput] origin query:", originQuery);
+  }, [originQuery]);
+
+  useEffect(() => {
+    console.log("[RouteInput] destination query:", destQuery);
+  }, [destQuery]);
+
+  useEffect(() => {
+    console.log("[RouteInput] rendered origin predictions:", originSuggs.length);
+  }, [originSuggs]);
+
+  useEffect(() => {
+    console.log("[RouteInput] rendered destination predictions:", destSuggs.length);
+  }, [destSuggs]);
+
+  useEffect(() => {
+    console.log("[RouteInput] selected origin place:", originPlace);
+  }, [originPlace]);
+
+  useEffect(() => {
+    console.log("[RouteInput] selected destination place:", destPlace);
+  }, [destPlace]);
+
   // ── Autocomplete: origin ────────────────────────────────────────────────────
   useEffect(() => {
     if (originPlace) return;
@@ -75,9 +99,13 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
         if (!res.ok) throw new Error("autocomplete failed");
         const data = await res.json();
         if (originRequestId.current !== currentId) return;
+        console.log("[RouteInput] origin autocomplete response:", data);
         setOriginSuggs(data.predictions ?? []);
         setShowOriginDD(true);
-      } catch { /* silent */ }
+      } catch (error) {
+        console.error("[RouteInput] origin autocomplete failed:", error);
+        setOriginSuggs([]);
+      }
       finally  {
         if (originRequestId.current === currentId) {
           setLoadingOrigin(false);
@@ -103,9 +131,13 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
         if (!res.ok) throw new Error("autocomplete failed");
         const data = await res.json();
         if (destRequestId.current !== currentId) return;
+        console.log("[RouteInput] destination autocomplete response:", data);
         setDestSuggs(data.predictions ?? []);
         setShowDestDD(true);
-      } catch { /* silent */ }
+      } catch (error) {
+        console.error("[RouteInput] destination autocomplete failed:", error);
+        setDestSuggs([]);
+      }
       finally  {
         if (destRequestId.current === currentId) {
           setLoadingDest(false);
@@ -221,6 +253,7 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
     const cached = lastRouteCacheRef.current;
 
     if (cached && cached.key === routeKey && cached.expiresAt > now) {
+      console.log("[RouteInput] calculate click using cached route", { routeKey });
       setRouteError(null);
       setRouteResult(cached.value);
       onRouteChangeRef.current(cached.value);
@@ -229,6 +262,7 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
 
     if (inFlightKeyRef.current === routeKey) return;
     if (lastFetchedKeyRef.current === routeKey && routeResult) {
+      console.log("[RouteInput] calculate click using last fetched route", { routeKey });
       onRouteChangeRef.current(routeResult);
       return;
     }
@@ -241,6 +275,12 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
     const controller = new AbortController();
     routeAbortRef.current = controller;
 
+    console.log("[RouteInput] calculate click route payload:", {
+      originPlaceId: originPlace.placeId,
+      destinationPlaceId: destPlace.placeId,
+      routeKey,
+    });
+
     try {
       const response = await fetch(
         `/api/route?originPlaceId=${encodeURIComponent(originPlace.placeId)}`
@@ -248,6 +288,7 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
         { signal: controller.signal }
       );
       const data = await response.json();
+      console.log("[RouteInput] /api/route response:", { status: response.status, data });
       if (!response.ok || data.error) {
         throw new Error(data.error ?? "route failed");
       }
@@ -283,9 +324,9 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 relative overflow-visible">
       {/* Origin */}
-      <div ref={originBoxRef}>
+      <div ref={originBoxRef} className="relative z-[130]">
         <label className="label">Nereden</label>
         <div className="relative">
           <div className="relative">
@@ -344,7 +385,7 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
       </div>
 
       {/* Destination */}
-      <div ref={destBoxRef}>
+      <div ref={destBoxRef} className="relative z-[120]">
         <label className="label">Nereye</label>
         <div className="relative">
           <div className="relative">
@@ -452,7 +493,7 @@ function SuggestionDropdown({
   return (
     <div
       style={{
-        position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 50,
+        position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 180,
         background: "#13132b",
         border: "1px solid rgba(168,85,247,0.3)",
         borderRadius: 12,
