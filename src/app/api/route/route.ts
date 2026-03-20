@@ -15,6 +15,24 @@ export const runtime = "edge";
 
 import { NextRequest, NextResponse } from "next/server";
 
+const ROUTE_TTL_MS = 10 * 60 * 1000;
+
+type CachedRoute = {
+  expiresAt: number;
+  payload: {
+    distanceKm: number;
+    durationText: string;
+    durationMinutes: number;
+    polyline: string | null;
+    origin: { lat: number; lng: number } | null;
+    destination: { lat: number; lng: number } | null;
+    source: string;
+    fetchedAt: string;
+  };
+};
+
+const routeCache = new Map<string, CachedRoute>();
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const originPlaceId      = searchParams.get("originPlaceId")?.trim();
@@ -31,6 +49,17 @@ export async function GET(request: NextRequest) {
       { error: "Başlangıç ve varış noktası farklı olmalıdır" },
       { status: 400 }
     );
+  }
+  const cacheKey = `${originPlaceId}::${destinationPlaceId}`;
+  const now = Date.now();
+  const cached = routeCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) {
+    return NextResponse.json(cached.payload, {
+      headers: {
+        "Cache-Control": "private, max-age=0, must-revalidate",
+        "X-Route-Cache": "HIT",
+      },
+    });
   }
 
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
@@ -56,7 +85,7 @@ export async function GET(request: NextRequest) {
       headers: {
         "Content-Type":       "application/json",
         "X-Goog-Api-Key":     apiKey,
-        "X-Goog-FieldMask":   "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
+        "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline,routes.legs.startLocation.latLng,routes.legs.endLocation.latLng",
       },
       body:   JSON.stringify(body),
       signal: AbortSignal.timeout(8000),
@@ -77,6 +106,10 @@ export async function GET(request: NextRequest) {
     distanceMeters?: number;
     duration?: string;
     polyline?: { encodedPolyline?: string };
+    legs?: Array<{
+      startLocation?: { latLng?: { latitude?: number; longitude?: number } };
+      endLocation?: { latLng?: { latitude?: number; longitude?: number } };
+    }>;
   };
 
   const routes = (data.routes ?? []) as RouteEntry[];
@@ -101,14 +134,35 @@ export async function GET(request: NextRequest) {
     ? (m > 0 ? `${h} saat ${m} dk` : `${h} saat`)
     : `${m} dk`;
 
-  return NextResponse.json({
+  const firstLeg = route.legs?.[0];
+  const originLat = firstLeg?.startLocation?.latLng?.latitude;
+  const originLng = firstLeg?.startLocation?.latLng?.longitude;
+  const destinationLat = firstLeg?.endLocation?.latLng?.latitude;
+  const destinationLng = firstLeg?.endLocation?.latLng?.longitude;
+
+  const payload = {
     distanceKm,
     durationText,
     durationMinutes,
-    polyline:  route.polyline?.encodedPolyline ?? null,
-    source:    "Google Routes API",
+    polyline: route.polyline?.encodedPolyline ?? null,
+    origin:
+      typeof originLat === "number" && typeof originLng === "number"
+        ? { lat: originLat, lng: originLng }
+        : null,
+    destination:
+      typeof destinationLat === "number" && typeof destinationLng === "number"
+        ? { lat: destinationLat, lng: destinationLng }
+        : null,
+    source: "Google Routes API",
     fetchedAt: new Date().toISOString(),
-  }, {
-    headers: { "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=600" },
+  };
+
+  routeCache.set(cacheKey, { expiresAt: now + ROUTE_TTL_MS, payload });
+
+  return NextResponse.json(payload, {
+    headers: {
+      "Cache-Control": "private, max-age=0, must-revalidate",
+      "X-Route-Cache": "MISS",
+    },
   });
 }

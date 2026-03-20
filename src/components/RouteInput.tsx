@@ -1,6 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { useState, useEffect, useRef, type CSSProperties } from "react";
+
+const AUTOCOMPLETE_DEBOUNCE_MS = 350;
+const ROUTE_CACHE_TTL_MS = 10 * 60 * 1000;
 
 export interface PlacePrediction {
   placeId: string;
@@ -9,10 +13,18 @@ export interface PlacePrediction {
   secondaryText: string;
 }
 
+export interface LatLng {
+  lat: number;
+  lng: number;
+}
+
 export interface RouteInfo {
   distanceKm: number;
   durationText: string;
   durationMinutes: number;
+  polyline: string | null;
+  origin: LatLng | null;
+  destination: LatLng | null;
 }
 
 interface Props {
@@ -41,6 +53,10 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
   const onRouteChangeRef = useRef(onRouteChange);
   const originRequestId = useRef(0);
   const destRequestId = useRef(0);
+  const lastRouteCacheRef = useRef<{ key: string; expiresAt: number; value: RouteInfo } | null>(null);
+  const lastFetchedKeyRef = useRef<string | null>(null);
+  const inFlightKeyRef = useRef<string | null>(null);
+  const routeAbortRef = useRef<AbortController | null>(null);
   onRouteChangeRef.current = onRouteChange;
 
   // ── Autocomplete: origin ────────────────────────────────────────────────────
@@ -63,7 +79,7 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
           setLoadingOrigin(false);
         }
       }
-    }, 300);
+    }, AUTOCOMPLETE_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [originQuery, originPlace]);
 
@@ -87,24 +103,47 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
           setLoadingDest(false);
         }
       }
-    }, 300);
+    }, AUTOCOMPLETE_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [destQuery, destPlace]);
 
   // ── Route fetch ─────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!originPlace || !destPlace) {
+      routeAbortRef.current?.abort();
+      inFlightKeyRef.current = null;
+      lastFetchedKeyRef.current = null;
       setRouteResult(null);
       onRouteChangeRef.current(null);
       return;
     }
+
+    const routeKey = `${originPlace.placeId}::${destPlace.placeId}`;
+    const now = Date.now();
+    const cached = lastRouteCacheRef.current;
+    if (cached && cached.key === routeKey && cached.expiresAt > now) {
+      setRouteError(null);
+      setLoadingRoute(false);
+      setRouteResult(cached.value);
+      onRouteChangeRef.current(cached.value);
+      return;
+    }
+    if (inFlightKeyRef.current === routeKey) return;
+    if (lastFetchedKeyRef.current === routeKey && routeResult) return;
+
     let cancelled = false;
     setLoadingRoute(true);
     setRouteError(null);
+    inFlightKeyRef.current = routeKey;
+
+    routeAbortRef.current?.abort();
+    const controller = new AbortController();
+    routeAbortRef.current = controller;
 
     fetch(
       `/api/route?originPlaceId=${encodeURIComponent(originPlace.placeId)}` +
-      `&destinationPlaceId=${encodeURIComponent(destPlace.placeId)}`
+      `&destinationPlaceId=${encodeURIComponent(destPlace.placeId)}`,
+      { signal: controller.signal }
     )
       .then(async (r) => {
         const data = await r.json();
@@ -124,7 +163,16 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
             distanceKm:    data.distanceKm,
             durationText:  data.durationText,
             durationMinutes: data.durationMinutes,
+            polyline: data.polyline ?? null,
+            origin: data.origin ?? null,
+            destination: data.destination ?? null,
           };
+          lastRouteCacheRef.current = {
+            key: routeKey,
+            expiresAt: Date.now() + ROUTE_CACHE_TTL_MS,
+            value: info,
+          };
+          lastFetchedKeyRef.current = routeKey;
           setRouteResult(info);
           onRouteChangeRef.current(info);
         }
@@ -134,11 +182,23 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
         setRouteError("Güzergah bilgisi alınamadı.");
         setRouteResult(null);
         onRouteChangeRef.current(null);
+        lastFetchedKeyRef.current = null;
       })
-      .finally(() => { if (!cancelled) setLoadingRoute(false); });
+      .finally(() => {
+        if (!cancelled) setLoadingRoute(false);
+        if (inFlightKeyRef.current === routeKey) {
+          inFlightKeyRef.current = null;
+        }
+      });
 
-    return () => { cancelled = true; };
-  }, [originPlace, destPlace]);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (inFlightKeyRef.current === routeKey) {
+        inFlightKeyRef.current = null;
+      }
+    };
+  }, [originPlace, destPlace, routeResult]);
 
   // ── Close dropdowns on outside click ───────────────────────────────────────
   useEffect(() => {
@@ -370,32 +430,61 @@ function SuggestionDropdown({
 }
 
 function RouteResultBanner({ result }: { result: RouteInfo }) {
+  const mapSrc =
+    result.polyline
+      ? `/api/route/map?polyline=${encodeURIComponent(result.polyline)}`
+          + (result.origin ? `&originLat=${result.origin.lat}&originLng=${result.origin.lng}` : "")
+          + (result.destination ? `&destinationLat=${result.destination.lat}&destinationLng=${result.destination.lng}` : "")
+      : null;
+
   return (
-    <div
-      className="fade-in flex gap-0 rounded-xl overflow-hidden"
-      style={{ border: "1px solid rgba(168,85,247,0.25)", background: "rgba(124,58,237,0.1)" }}
-    >
-      {[
-        { label: "Mesafe", value: `${result.distanceKm} km` },
-        { label: "Süre",   value: result.durationText },
-        { label: "Kaynak", value: "Google Maps" },
-      ].map(({ label, value }, i, arr) => (
+    <div className="fade-in flex flex-col gap-2">
+      <div
+        className="flex gap-0 rounded-xl overflow-hidden"
+        style={{ border: "1px solid rgba(168,85,247,0.25)", background: "rgba(124,58,237,0.1)" }}
+      >
+        {[
+          { label: "Mesafe", value: `${result.distanceKm} km` },
+          { label: "Süre", value: result.durationText },
+          { label: "Kaynak", value: "Google Maps" },
+        ].map(({ label, value }, i, arr) => (
+          <div
+            key={label}
+            className="flex-1 flex flex-col items-center gap-0.5 py-3"
+            style={{
+              borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.08)" : "none",
+            }}
+          >
+            <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{label}</span>
+            <span
+              className="text-sm font-bold"
+              style={{ color: i < 2 ? "#c084fc" : "var(--text-secondary)", fontSize: i === 2 ? "11px" : undefined }}
+            >
+              {value}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {mapSrc && (
         <div
-          key={label}
-          className="flex-1 flex flex-col items-center gap-0.5 py-3"
+          className="rounded-xl overflow-hidden"
           style={{
-            borderRight: i < arr.length - 1 ? "1px solid rgba(255,255,255,0.08)" : "none",
+            border: "1px solid rgba(168,85,247,0.25)",
+            background: "rgba(17,24,39,0.5)",
           }}
         >
-          <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{label}</span>
-          <span
-            className="text-sm font-bold"
-            style={{ color: i < 2 ? "#c084fc" : "var(--text-secondary)", fontSize: i === 2 ? "11px" : undefined }}
-          >
-            {value}
-          </span>
+          <Image
+            src={mapSrc}
+            alt="Güzergah harita önizlemesi"
+            width={960}
+            height={460}
+            unoptimized
+            className="block w-full h-[180px] object-cover"
+            loading="lazy"
+          />
         </div>
-      ))}
+      )}
     </div>
   );
 }
