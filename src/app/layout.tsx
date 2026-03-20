@@ -50,6 +50,20 @@ export default function RootLayout({
         />
         {children}
         <Analytics />
+        <footer style={{
+          position: "fixed",
+          bottom: "12px",
+          left: "12px",
+          fontSize: "11px",
+          color: "rgba(150,150,150,0.7)",
+          pointerEvents: "auto",
+          zIndex: 50,
+        }}>
+          Websitesi Deniz Baran tarafından yapılmıştır, tüm hakları saklıdır.{" "}
+          <a href="mailto:contact@minimath.dev" style={{ color: "inherit", textDecoration: "underline" }}>
+            İletişim: contact@minimath.dev
+          </a>
+        </footer>
       </body>
     </html>
   );
