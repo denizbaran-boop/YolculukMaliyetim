@@ -12,8 +12,8 @@
  * This module contains NO tariff values. All prices live in src/data/tolls.ts.
  */
 
-import { TOLL_RECORDS } from "@/data/tolls";
-import type { TollRecord, GeoZone } from "@/data/tolls";
+import { TOLL_RECORDS, TOLL_ROUTES } from "@/data/tolls";
+import type { TollRecord, TollRoute, GeoZone } from "@/data/tolls";
 import type { RouteInfo } from "@/components/RouteInput";
 
 // ── Text normalisation ────────────────────────────────────────────────────────
@@ -54,7 +54,54 @@ function isInGeoZone(lat: number, lng: number, zone: GeoZone): boolean {
   );
 }
 
-// ── Core matching logic ───────────────────────────────────────────────────────
+// ── Full corridor matching (priority over segments) ───────────────────────────
+
+/**
+ * Returns the first TollRoute whose from/to keywords match the given route,
+ * or null if no corridor applies.
+ *
+ * Matching is bidirectional: origin∈from & dest∈to  OR  origin∈to & dest∈from.
+ * When a corridor matches, the caller should use its price directly and skip
+ * segment summation entirely.
+ */
+export function matchCorridor(routeInfo: RouteInfo): TollRoute | null {
+  const { originName, destinationName, distanceKm } = routeInfo;
+
+  if (!originName || !destinationName) return null;
+
+  for (const route of TOLL_ROUTES) {
+    const minDist = route.minDistanceKm ?? 0;
+
+    if (distanceKm < minDist) {
+      console.log(
+        `[TollMatcher] Corridor ${route.id}: skipped ` +
+        `(distance ${distanceKm} km < threshold ${minDist} km)`
+      );
+      continue;
+    }
+
+    const fwd =
+      hasKeyword(originName, route.from) && hasKeyword(destinationName, route.to);
+    const rev =
+      hasKeyword(originName, route.to) && hasKeyword(destinationName, route.from);
+
+    if (fwd || rev) {
+      const dir = fwd
+        ? `"${originName}" → "${destinationName}"`
+        : `"${destinationName}" → "${originName}" (reverse)`;
+      console.log(
+        `[TollMatcher] ✓ Corridor match: ${route.id} — "${route.name}" — ₺${route.prices.class1} (class1)`
+      );
+      console.log(`[TollMatcher]   via: ${dir}`);
+      return route;
+    }
+  }
+
+  console.log(`[TollMatcher] No corridor match — falling back to segment calculation`);
+  return null;
+}
+
+// ── Segment matching logic ────────────────────────────────────────────────────
 
 /**
  * Returns every TollRecord that is triggered by the given route.

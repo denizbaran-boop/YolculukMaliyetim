@@ -101,6 +101,74 @@ export interface TollRecord {
 }
 
 /**
+ * A full point-to-point corridor with an official all-in-one price.
+ *
+ * Checked BEFORE segment-based TOLL_RECORDS. When a route matches a corridor,
+ * its price is used directly — no segment summation. This reflects the
+ * entry → exit pricing model used on managed motorways (e.g. Otoyol A.Ş.).
+ *
+ * To add a corridor: append a TollRoute to TOLL_ROUTES below.
+ * To update a price: edit only the `prices` field of the relevant entry.
+ */
+export interface TollRoute {
+  id: string;
+  name: string;
+  /** Origin-side keywords — any match qualifies */
+  from: string[];
+  /** Destination-side keywords — any match qualifies */
+  to: string[];
+  prices: TollPrices;
+  minDistanceKm?: number;
+  note?: string;
+}
+
+/**
+ * Full corridor price records (entry → exit, all-in-one tariff).
+ *
+ * Priority: TOLL_ROUTES are checked first. A matching corridor overrides
+ * all segment-based calculation from TOLL_RECORDS below.
+ *
+ * Sources:
+ *   - Otoyol A.Ş. resmi fiyat hesaplayıcı (otoyol.com.tr)
+ *   - KGM Güzergah Sorgula: kgm.gov.tr
+ */
+export const TOLL_ROUTES: TollRoute[] = [
+
+  // ── İstanbul → İzmir tam güzergah (O-5 / O-7) ───────────────────────────
+  //
+  // Covers the complete O-5 / O-7 managed motorway from Istanbul to İzmir,
+  // including the Osmangazi Bridge crossing fee.
+  //
+  // Official source: Otoyol A.Ş. price calculator
+  //   Entry:  Osmangazi Köprüsü — İzmir yönü
+  //   Exit:   İzmir
+  //   Class1: ₺2 465 (verified 2025)
+  //
+  // This REPLACES the old osmangazi (₺208) + goi_izmir_section (₺185) +
+  // istanbul_bogaz (₺103) segment summation for the İstanbul → İzmir corridor.
+  {
+    id: "istanbul_izmir_full",
+    name: "İstanbul → İzmir (O-5/O-7 Tam Güzergah)",
+    from: ["İstanbul"],
+    to: ["İzmir"],
+    prices: { class1: 2465 },
+    minDistanceKm: 400,
+    note:
+      "Osmangazi Köprüsü dahil tam O-5/O-7 güzergahı. " +
+      "Kaynak: Otoyol A.Ş. resmi hesaplayıcı (2025). " +
+      "Segmentlerin (₺208 + ₺185 + ₺103) toplamı KULLANILMAZ — tam tarife uygulanır.",
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Segment-based fallback records
+//
+// These fire only when NO full corridor (TOLL_ROUTES) matches the route.
+// They cover partial routes (e.g. İstanbul → Bursa, Trakya → Çanakkale)
+// and intra-city crossings (İstanbul Bosphorus).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
  * All known toll records.
  *
  * Prices are approximate; verify against official KGM sources before production use.

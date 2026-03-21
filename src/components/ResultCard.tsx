@@ -55,23 +55,85 @@ export default function ResultCard({ result, variant, peopleCount, tollCost = 0 
 
   return (
     <div className="glass-card result-glow p-6 fade-in flex flex-col gap-5">
-      {/* Total cost — hero number */}
-      <div className="text-center">
-        <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: "var(--text-secondary)" }}>
-          Toplam Maliyet
-        </p>
-        <p
-          className="font-bold leading-none"
-          style={{
-            fontSize: "clamp(2.2rem, 8vw, 3.5rem)",
-            background: "linear-gradient(135deg, #c084fc, #7c3aed)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-          }}
-        >
-          {formatTL(displayTotal)}
-        </p>
-      </div>
+      {/* Hero: fuel cost + toll cost side by side when toll applies */}
+      {hasToll ? (
+        <div className="text-center">
+          <div className="flex items-end justify-center gap-3 flex-wrap">
+            {/* Fuel — big purple */}
+            <div className="flex flex-col items-center">
+              <p
+                className="text-xs font-semibold uppercase tracking-widest mb-1"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                Yakıt
+              </p>
+              <p
+                className="font-bold leading-none"
+                style={{
+                  fontSize: "clamp(2.2rem, 8vw, 3.5rem)",
+                  background: "linear-gradient(135deg, #c084fc, #7c3aed)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}
+              >
+                {formatTL(result.totalCost)}
+              </p>
+            </div>
+
+            {/* Plus separator */}
+            <p
+              className="font-bold pb-1"
+              style={{ fontSize: "clamp(1.4rem, 4vw, 2rem)", color: "#4ade80" }}
+            >
+              +
+            </p>
+
+            {/* Toll — green */}
+            <div className="flex flex-col items-center fade-in">
+              <p
+                className="text-xs font-semibold uppercase tracking-widest mb-1"
+                style={{ color: "#4ade80", opacity: 0.8 }}
+              >
+                Otoyol / Köprü
+              </p>
+              <p
+                className="font-bold leading-none"
+                style={{
+                  fontSize: "clamp(1.6rem, 5.5vw, 2.6rem)",
+                  color: "#22c55e",
+                }}
+              >
+                {formatTL(tollCost)}
+              </p>
+            </div>
+          </div>
+
+          {/* Total summary */}
+          <p className="text-xs mt-2" style={{ color: "var(--text-secondary)" }}>
+            Toplam: {formatTL(displayTotal)}
+          </p>
+        </div>
+      ) : (
+        <div className="text-center">
+          <p
+            className="text-xs font-semibold uppercase tracking-widest mb-1"
+            style={{ color: "var(--text-secondary)" }}
+          >
+            Toplam Maliyet
+          </p>
+          <p
+            className="font-bold leading-none"
+            style={{
+              fontSize: "clamp(2.2rem, 8vw, 3.5rem)",
+              background: "linear-gradient(135deg, #c084fc, #7c3aed)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            {formatTL(displayTotal)}
+          </p>
+        </div>
+      )}
 
       <hr className="divider" style={{ margin: "0" }} />
 
@@ -108,7 +170,7 @@ export default function ResultCard({ result, variant, peopleCount, tollCost = 0 
                 Tahmini otoyol ve köprü ücreti
               </p>
             </div>
-            <span className="text-sm font-semibold" style={{ color: "#c084fc" }}>
+            <span className="text-sm font-semibold" style={{ color: "#22c55e" }}>
               {formatTL(tollCost)}
             </span>
           </div>

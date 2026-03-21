@@ -12,11 +12,17 @@
  */
 
 import type { VehicleClass } from "@/data/tolls";
-import { matchTolls } from "@/lib/tollMatcher";
+import { matchCorridor, matchTolls } from "@/lib/tollMatcher";
 import type { RouteInfo } from "@/components/RouteInput";
 
 /**
  * Calculates the total toll / bridge cost for a given route.
+ *
+ * Detection priority:
+ *   1. Full corridor match (TOLL_ROUTES) — entry→exit all-in-one price.
+ *      When a corridor matches, its price is returned directly.
+ *   2. Segment fallback (TOLL_RECORDS) — individual toll gates summed.
+ *      Used when no corridor covers the route (e.g. İstanbul → Bursa).
  *
  * @param routeInfo     Route returned by the Google Routes API proxy.
  *                      Must include originName and destinationName for keyword
@@ -31,10 +37,16 @@ export function calculateTollCost(
 ): number {
   if (!routeInfo) return 0;
 
-  const matched = matchTolls(routeInfo);
+  // ── Priority 1: full corridor price ──────────────────────────────────────
+  const corridor = matchCorridor(routeInfo);
+  if (corridor) {
+    const price = corridor.prices[vehicleClass] ?? corridor.prices.class1;
+    return Math.round(price * 100) / 100;
+  }
 
+  // ── Priority 2: segment-based summation ──────────────────────────────────
+  const matched = matchTolls(routeInfo);
   const total = matched.reduce((sum, toll) => {
-    // Fall back to class1 price if the requested class is not defined
     const price = toll.prices[vehicleClass] ?? toll.prices.class1;
     return sum + price;
   }, 0);
