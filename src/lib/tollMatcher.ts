@@ -65,15 +65,35 @@ function isInGeoZone(lat: number, lng: number, zone: GeoZone): boolean {
  *   3. Geographic zone matching on origin / destination lat-lng.
  *
  * Each record is included at most once regardless of how many corridors match.
+ *
+ * Debug output is written to the browser/server console so you can verify
+ * which segments were detected and why. Look for [TollMatcher] in the console.
  */
 export function matchTolls(routeInfo: RouteInfo): TollRecord[] {
   const matched: TollRecord[] = [];
+  const skipped: Array<{ id: string; reason: string }> = [];
+
+  console.log(
+    `[TollMatcher] ── Route: "${routeInfo.originName ?? "?"}" → "${routeInfo.destinationName ?? "?"}" ` +
+    `(${routeInfo.distanceKm} km) ──`
+  );
+  console.log(
+    `[TollMatcher]    Origin  coords: ${routeInfo.origin ? `${routeInfo.origin.lat.toFixed(4)}, ${routeInfo.origin.lng.toFixed(4)}` : "n/a"}`
+  );
+  console.log(
+    `[TollMatcher]    Dest    coords: ${routeInfo.destination ? `${routeInfo.destination.lat.toFixed(4)}, ${routeInfo.destination.lng.toFixed(4)}` : "n/a"}`
+  );
 
   for (const toll of TOLL_RECORDS) {
     const minDist = toll.minDistanceKm ?? 0;
-    if (routeInfo.distanceKm < minDist) continue;
+
+    if (routeInfo.distanceKm < minDist) {
+      skipped.push({ id: toll.id, reason: `distance ${routeInfo.distanceKm} km < threshold ${minDist} km` });
+      continue;
+    }
 
     let detected = false;
+    let detectedVia = "";
 
     // ── Strategy 1: keyword corridor matching ──────────────────────────────
     if (
@@ -88,8 +108,14 @@ export function matchTolls(routeInfo: RouteInfo): TollRecord[] {
         const origInB = hasKeyword(routeInfo.originName, corridor.sideB);
         const destInA = hasKeyword(routeInfo.destinationName, corridor.sideA);
 
-        if ((origInA && destInB) || (origInB && destInA)) {
+        if (origInA && destInB) {
           detected = true;
+          detectedVia = `keyword corridor (origin "${routeInfo.originName}" ∈ sideA, dest "${routeInfo.destinationName}" ∈ sideB)`;
+          break;
+        }
+        if (origInB && destInA) {
+          detected = true;
+          detectedVia = `keyword corridor (origin "${routeInfo.originName}" ∈ sideB, dest "${routeInfo.destinationName}" ∈ sideA — reverse)`;
           break;
         }
       }
@@ -104,15 +130,45 @@ export function matchTolls(routeInfo: RouteInfo): TollRecord[] {
       const destInA   = isInGeoZone(routeInfo.destination.lat, routeInfo.destination.lng, a);
       const destInB   = isInGeoZone(routeInfo.destination.lat, routeInfo.destination.lng, b);
 
-      if ((originInA && destInB) || (originInB && destInA)) {
+      if (originInA && destInB) {
         detected = true;
+        detectedVia = `geo zone (origin in zone-A, dest in zone-B)`;
+      } else if (originInB && destInA) {
+        detected = true;
+        detectedVia = `geo zone (origin in zone-B, dest in zone-A — reverse)`;
+      }
+
+      if (!detected) {
+        console.log(
+          `[TollMatcher]    ${toll.id}: geo zone miss — ` +
+          `origin(inA=${originInA}, inB=${originInB}), dest(inA=${destInA}, inB=${destInB})`
+        );
       }
     }
 
     if (detected) {
       matched.push(toll);
+      console.log(
+        `[TollMatcher] ✓  ${toll.id} — "${toll.name}" — ₺${toll.prices.class1} (class1)` +
+        `\n              via: ${detectedVia}`
+      );
+    } else {
+      skipped.push({ id: toll.id, reason: "no corridor or geo zone matched" });
     }
   }
+
+  if (skipped.length > 0) {
+    console.log(
+      `[TollMatcher] ✗  Skipped: ` +
+      skipped.map((s) => `${s.id} (${s.reason})`).join(" | ")
+    );
+  }
+
+  const total = matched.reduce((s, t) => s + t.prices.class1, 0);
+  console.log(
+    `[TollMatcher] ── Total class1: ₺${total} (${matched.length} segment${matched.length !== 1 ? "s" : ""}: ` +
+    `${matched.map((t) => t.id).join(" + ") || "none"}) ──`
+  );
 
   return matched;
 }
