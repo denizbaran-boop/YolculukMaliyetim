@@ -118,6 +118,19 @@ export default function HomePage() {
       className="min-h-screen relative overflow-hidden"
       style={{ background: "var(--bg-primary)" }}
     >
+      {/* Beta notice */}
+      <div
+        className="fixed top-3 left-3 z-50 px-2.5 py-1 rounded-lg text-xs"
+        style={{
+          background: "rgba(124,58,237,0.18)",
+          border: "1px solid rgba(168,85,247,0.25)",
+          color: "var(--text-secondary)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        Bu site geliştirme aşamasında olup Beta özellikler içerir ve fiyatlar tahminidir.
+      </div>
+
       {/* Background gradient blobs */}
       <div
         className="pointer-events-none fixed inset-0"
