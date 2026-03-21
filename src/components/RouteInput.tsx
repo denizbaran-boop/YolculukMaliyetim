@@ -24,6 +24,10 @@ export interface RouteInfo {
   polyline: string | null;
   origin: LatLng | null;
   destination: LatLng | null;
+  /** Full place description (e.g. "Bursa, Türkiye") — used for toll keyword matching */
+  originName: string | null;
+  /** Full place description (e.g. "İzmir, Türkiye") — used for toll keyword matching */
+  destinationName: string | null;
 }
 
 interface Props {
@@ -299,6 +303,8 @@ export default function RouteInput({ peopleCount, onPeopleCountChange, onRouteCh
         polyline: data.polyline ?? null,
         origin: data.origin ?? null,
         destination: data.destination ?? null,
+        originName: originPlace.description,
+        destinationName: destPlace.description,
       };
       lastRouteCacheRef.current = {
         key: routeKey,

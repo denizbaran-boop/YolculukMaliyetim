@@ -7,9 +7,11 @@ interface Props {
   result: CalculationResult | null;
   variant: VehicleVariant | null;
   peopleCount: number;
+  /** Total toll/bridge cost in TRY (0 if no tolls detected). */
+  tollCost?: number;
 }
 
-export default function ResultCard({ result, variant, peopleCount }: Props) {
+export default function ResultCard({ result, variant, peopleCount, tollCost = 0 }: Props) {
   const hasResult = result && variant && isFinite(result.totalCost) && result.totalCost > 0;
 
   if (!hasResult) {
@@ -46,6 +48,9 @@ export default function ResultCard({ result, variant, peopleCount }: Props) {
   }
 
   const unit = fuelUnitLabel(variant.fuelType);
+  const hasToll = tollCost > 0;
+  const displayTotal = result.totalCost + tollCost;
+  const displayPerPerson = displayTotal / Math.max(1, peopleCount);
   const showPerPerson = peopleCount > 1;
 
   return (
@@ -64,7 +69,7 @@ export default function ResultCard({ result, variant, peopleCount }: Props) {
             WebkitTextFillColor: "transparent",
           }}
         >
-          {formatTL(result.totalCost)}
+          {formatTL(displayTotal)}
         </p>
       </div>
 
@@ -77,9 +82,37 @@ export default function ResultCard({ result, variant, peopleCount }: Props) {
             Kişi başı ({peopleCount} kişi)
           </span>
           <span className="text-lg font-bold" style={{ color: "#c084fc" }}>
-            {formatTL(result.costPerPerson)}
+            {formatTL(displayPerPerson)}
           </span>
         </div>
+      )}
+
+      {/* Cost breakdown rows — only when toll applies */}
+      {hasToll && (
+        <>
+          <div className="flex items-center justify-between fade-in">
+            <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
+              ⛽ Yakıt Maliyeti
+            </span>
+            <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+              {formatTL(result.totalCost)}
+            </span>
+          </div>
+
+          <div className="flex items-start justify-between fade-in">
+            <div>
+              <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
+                🛣 Otoyol / Köprü Ücreti
+              </span>
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)", opacity: 0.65 }}>
+                Tahmini otoyol ve köprü ücreti
+              </p>
+            </div>
+            <span className="text-sm font-semibold" style={{ color: "#c084fc" }}>
+              {formatTL(tollCost)}
+            </span>
+          </div>
+        </>
       )}
 
       {/* Stats grid */}

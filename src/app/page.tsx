@@ -3,6 +3,7 @@
 import { useState, useMemo, type ReactNode } from "react";
 import type { VehicleVariant, TripMode, CalculationResult } from "@/types";
 import { calculate } from "@/lib/calculator";
+import { calculateTollCost } from "@/lib/tollCalculator";
 import { useLocation } from "@/hooks/useLocation";
 import VehicleSelector from "@/components/VehicleSelector";
 import ManualConsumptionInput from "@/components/ManualConsumptionInput";
@@ -98,6 +99,12 @@ export default function HomePage() {
     tripInputMode,
     routeInfo?.durationMinutes,
   ]);
+
+  // Toll cost — only applies in route mode (requires origin/destination names + coords)
+  const tollCost = useMemo(() => {
+    if (tripInputMode !== "route" || !routeInfo) return 0;
+    return calculateTollCost(routeInfo);
+  }, [tripInputMode, routeInfo]);
 
   // Switch modes — reset the variant for the inactive mode
   const handleModeSwitch = (next: VehicleInputMode) => {
@@ -314,6 +321,7 @@ export default function HomePage() {
           result={result}
           variant={variant}
           peopleCount={parseInt(peopleCount) || 1}
+          tollCost={tollCost}
         />
 
         {/* SEO content section */}
