@@ -67,13 +67,9 @@ async function loadOpetData(): Promise<{ provinces: OpetProvince[]; lastUpdate: 
     "Accept":     "application/json",
   };
 
-  // next.revalidate hooks into Next.js Data Cache — refreshes once per day at midnight
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fetchOpts: RequestInit = { headers, next: { revalidate: secondsUntilMidnight() } } as any;
-
   const [pricesRes, updateRes] = await Promise.all([
-    fetch(OPET_ALL_PRICES,  fetchOpts),
-    fetch(OPET_LAST_UPDATE, fetchOpts),
+    fetch(OPET_ALL_PRICES,  { headers }),
+    fetch(OPET_LAST_UPDATE, { headers }),
   ]);
 
   if (!pricesRes.ok) throw new Error(`OPET HTTP ${pricesRes.status}`);
