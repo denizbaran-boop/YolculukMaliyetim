@@ -51,10 +51,16 @@ function secondsUntilMidnight(): number {
   return Math.max(60, Math.floor((msInDay - (nowTR % msInDay)) / 1000));
 }
 
-/** ASCII-fold Turkish characters for case-insensitive matching */
+/** ASCII-fold Turkish characters for case-insensitive matching.
+ *  IMPORTANT: İ/ı replacements must come BEFORE .toLowerCase() because
+ *  JS toLowerCase() turns "İ" (U+0130) into "i" + combining dot (U+0307),
+ *  not plain "i" — so post-lowercase replacement never matches. */
 function normTR(s: string): string {
-  return s.toLowerCase()
-    .replace(/[ıİ]/g, "i").replace(/ğ/g, "g").replace(/ş/g, "s")
+  return s
+    .replace(/İ/g, "I")   // Turkish İ → Latin I  (before toLowerCase)
+    .replace(/ı/g, "i")   // Turkish ı → Latin i  (before toLowerCase)
+    .toLowerCase()
+    .replace(/ğ/g, "g").replace(/ş/g, "s")
     .replace(/ç/g, "c").replace(/ö/g, "o").replace(/ü/g, "u")
     .trim();
 }
