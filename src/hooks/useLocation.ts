@@ -50,8 +50,13 @@ export function useLocation() {
             { headers: { "User-Agent": "yolculukmaliyetim.com/1.0" } }
           );
           const geoData = await geoRes.json();
+          // Prefer province-level names so the fuel API can match a region.
+          // address.city  = province capital (e.g. "Istanbul", "Ankara")
+          // address.state = province name   (e.g. "İstanbul" for Şile, Kadıköy…)
+          // address.town/county = district  (too granular — no province match)
           const city: string =
             geoData?.address?.city ||
+            geoData?.address?.state ||
             geoData?.address?.town ||
             geoData?.address?.county ||
             "";
